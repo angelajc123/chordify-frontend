@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getProgression, addSlot } from '../api/progression.js'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { getProgression, addSlot, deleteSlot } from '../api/progression.js'
 
 const progression = ref({
     id: '',
@@ -51,8 +51,30 @@ const handleAddSlot = async () => {
     await loadProgression(PROGRESSION_ID)
 }
 
+const handleKeyDown = async (event) => {
+    console.log('Key pressed:', event.key)
+    if (event.key === 'Backspace' && selectedSlot.value !== null) {
+        const response = await deleteSlot(progression.value.id, selectedSlot.value)
+        console.log('deleteSlot response:', response)
+        
+        if ("error" in response) {
+            error.value = response.error
+            return
+        }
+        
+        // Clear selection and reload progression
+        selectedSlot.value = null
+        await loadProgression(PROGRESSION_ID)
+    }
+}
+
 onMounted(async () => {
     await loadProgression(PROGRESSION_ID)
+    window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 
