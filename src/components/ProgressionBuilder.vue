@@ -1,14 +1,16 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getProgression } from '../api/progression.js'
+import { getProgression, addSlot } from '../api/progression.js'
 
 const progression = ref({
-  name: '',
-  id: '',
-  chords: []
+    id: '',
+    name: '',
+    chords: []
 })
 
 const error = ref(null)
+const loading = ref(true)
+const selectedSlot = ref(null)
 
 // Hard-coded progression ID
 const PROGRESSION_ID = '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
@@ -22,7 +24,31 @@ const loadProgression = async (progressionId) => {
         return
     }
 
-    progression.value = response.progression
+    progression.value.id = response.progression._id
+    progression.value.name = response.progression.name
+    progression.value.chords = response.progression.chordSequence
+    loading.value = false
+}
+
+const handleSlotClick = (index) => {
+    if (selectedSlot.value === index) {
+        selectedSlot.value = null // Unselect if already selected
+    } else {
+        selectedSlot.value = index // Select the slot
+    }
+}
+
+const handleAddSlot = async () => {
+    const response = await addSlot(progression.value.id)
+    console.log('addSlot response:', response)
+    
+    if ("error" in response) {
+        error.value = response.error
+        return
+    }
+    
+    // Reload the progression to get updated data
+    await loadProgression(PROGRESSION_ID)
 }
 
 onMounted(async () => {
@@ -37,7 +63,11 @@ onMounted(async () => {
     </header>
     
     <main class="content">
-      <div v-if="error" class="error">
+      <div v-if="loading" class="loading">
+        Loading...
+      </div>
+      
+      <div v-else-if="error" class="error">
         {{ error }}
       </div>
       
@@ -56,16 +86,22 @@ onMounted(async () => {
             <div class="bar-number">8</div>
           </div>
           <div class="bar-cells">
-            <div class="bar-cell">
-              <button class="add-chord-btn">+</button>
+            <div v-for="(chord, index) in progression.chords" :key="index" class="bar-cell">
+              <div 
+                class="slot" 
+                :class="{ 
+                  'slot-empty': !chord.chord,
+                  'slot-selected': selectedSlot === index
+                }"
+                @click="handleSlotClick(index)"
+              >
+                {{ chord.chord || 'Empty' }}
+              </div>
             </div>
-            <div class="bar-cell"></div>
-            <div class="bar-cell"></div>
-            <div class="bar-cell"></div>
-            <div class="bar-cell"></div>
-            <div class="bar-cell"></div>
-            <div class="bar-cell"></div>
-            <div class="bar-cell"></div>
+            <div class="bar-cell">
+              <button class="add-chord-btn" @click="handleAddSlot">+</button>
+            </div>
+            <div v-for="n in (7 - progression.chords.length)" :key="`empty-${n}`" class="bar-cell"></div>
           </div>
         </div>
       </div>
@@ -102,10 +138,15 @@ onMounted(async () => {
   width: 100%;
 }
 
+.loading,
 .error {
   text-align: center;
   padding: 2rem;
   font-size: 1.2rem;
+}
+
+.loading {
+  color: #42b883;
 }
 
 .error {
@@ -195,5 +236,35 @@ onMounted(async () => {
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(66, 184, 131, 0.3);
+}
+
+.slot {
+  width: calc(100%);
+  height: 80px;
+  background: #42b883;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slot:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(66, 184, 131, 0.4);
+}
+
+.slot-empty {
+  font-weight: 300;
+  font-style: italic;
+}
+
+.slot-selected {
+  background: #35495e;
 }
 </style>
