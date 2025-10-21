@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getProgression, addSlot, deleteSlot } from '../api/progression.js'
+import { getProgression, addSlot, deleteSlot, reorderSlots } from '../api/progression.js'
 
 const progression = ref({
     id: '',
@@ -11,6 +11,8 @@ const progression = ref({
 const error = ref(null)
 const loading = ref(true)
 const selectedSlot = ref(null)
+const draggedIndex = ref(null)
+const dragOverIndex = ref(null)
 
 // Hard-coded progression ID
 const PROGRESSION_ID = '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
@@ -68,6 +70,81 @@ const handleKeyDown = async (event) => {
     }
 }
 
+const handleDragStart = (event, index) => {
+    draggedIndex.value = index
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', index)
+    // Add a slight opacity to the dragged element
+    event.target.style.opacity = '0.5'
+}
+
+const handleDragEnd = (event) => {
+    event.target.style.opacity = '1'
+    draggedIndex.value = null
+    dragOverIndex.value = null
+}
+
+const handleDragOver = (event, index) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    dragOverIndex.value = index
+}
+
+const handleDragLeave = () => {
+    dragOverIndex.value = null
+}
+
+const handleDrop = async (event, newIndex) => {
+    event.preventDefault()
+    
+    const oldIndex = draggedIndex.value
+    
+    if (oldIndex === null || oldIndex === newIndex) {
+        draggedIndex.value = null
+        dragOverIndex.value = null
+        return
+    }
+    
+    // Track if the dragged slot was selected
+    const wasSelected = selectedSlot.value === oldIndex
+    
+    // Call the reorder API
+    const response = await reorderSlots(progression.value.id, oldIndex, newIndex)
+    console.log('reorderSlots response:', response)
+    
+    if ("error" in response) {
+        error.value = response.error
+        draggedIndex.value = null
+        dragOverIndex.value = null
+        return
+    }
+    
+    // Reload the progression to get updated data
+    await loadProgression(PROGRESSION_ID)
+    
+    // Update selection to follow the moved chord
+    if (wasSelected) {
+        selectedSlot.value = newIndex
+    } else if (selectedSlot.value !== null) {
+        // Adjust other selected slots if they were affected by the reorder
+        if (oldIndex < newIndex) {
+            // Moving right: slots between oldIndex and newIndex shift left
+            if (selectedSlot.value > oldIndex && selectedSlot.value <= newIndex) {
+                selectedSlot.value--
+            }
+        } else {
+            // Moving left: slots between newIndex and oldIndex shift right
+            if (selectedSlot.value >= newIndex && selectedSlot.value < oldIndex) {
+                selectedSlot.value++
+            }
+        }
+    }
+    
+    // Clear drag state
+    draggedIndex.value = null
+    dragOverIndex.value = null
+}
+
 onMounted(async () => {
     await loadProgression(PROGRESSION_ID)
     window.addEventListener('keydown', handleKeyDown)
@@ -108,13 +185,25 @@ onUnmounted(() => {
             <div class="bar-number">8</div>
           </div>
           <div class="bar-cells">
-            <div v-for="(chord, index) in progression.chords" :key="index" class="bar-cell">
+            <div 
+              v-for="(chord, index) in progression.chords" 
+              :key="index" 
+              class="bar-cell"
+              @dragover="handleDragOver($event, index)"
+              @dragleave="handleDragLeave"
+              @drop="handleDrop($event, index)"
+            >
               <div 
                 class="slot" 
                 :class="{ 
                   'slot-empty': !chord.chord,
-                  'slot-selected': selectedSlot === index
+                  'slot-selected': selectedSlot === index,
+                  'slot-dragging': draggedIndex === index,
+                  'slot-drag-over': dragOverIndex === index
                 }"
+                draggable="true"
+                @dragstart="handleDragStart($event, index)"
+                @dragend="handleDragEnd"
                 @click="handleSlotClick(index)"
               >
                 {{ chord.chord || 'Empty' }}
@@ -272,8 +361,9 @@ onUnmounted(() => {
   font-weight: bold;
   color: white;
   font-size: 1.2rem;
-  cursor: pointer;
+  cursor: move;
   transition: all 0.2s;
+  user-select: none;
 }
 
 .slot:hover {
@@ -288,5 +378,15 @@ onUnmounted(() => {
 
 .slot-selected {
   background: #35495e;
+}
+
+.slot-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.slot-drag-over {
+  border: 3px dashed #9e9e9e;
+  background: #7dd4b4;
 }
 </style>
