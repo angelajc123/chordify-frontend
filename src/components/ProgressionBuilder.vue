@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { getProgression, addSlot, deleteSlot, reorderSlots } from '../api/progression.js'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { getProgression, addSlot, deleteSlot, reorderSlots, setChord } from '../api/progression.js'
 
 const progression = ref({
     id: '',
@@ -13,6 +13,9 @@ const loading = ref(true)
 const selectedSlot = ref(null)
 const draggedIndex = ref(null)
 const dragOverIndex = ref(null)
+const editingSlot = ref(null)
+const editingValue = ref('')
+const originalValue = ref('')
 
 // Hard-coded progression ID
 const PROGRESSION_ID = '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
@@ -32,12 +35,83 @@ const loadProgression = async (progressionId) => {
     loading.value = false
 }
 
-const handleSlotClick = (index) => {
+const handleSlotClick = async (index) => {
+    // If currently editing a different slot, save it first
+    if (editingSlot.value !== null && editingSlot.value !== index) {
+        await saveChordEdit(editingSlot.value)
+    }
+    
+    // Don't handle clicks on the slot being edited (let input handle it)
+    if (editingSlot.value === index) {
+        return
+    }
+    
     if (selectedSlot.value === index) {
         selectedSlot.value = null // Unselect if already selected
     } else {
         selectedSlot.value = index // Select the slot
     }
+}
+
+const handleSlotDoubleClick = async (index) => {
+    // Select the slot
+    selectedSlot.value = index
+    
+    // Enter edit mode
+    editingSlot.value = index
+    originalValue.value = progression.value.chords[index].chord || ''
+    editingValue.value = originalValue.value
+    
+    // Focus the input after it's rendered
+    await nextTick()
+    const input = document.querySelector('.chord-input')
+    if (input) {
+        input.focus()
+        input.select()
+    }
+}
+
+const handleInputKeyDown = async (event, index) => {
+    if (event.key === 'Enter') {
+        event.preventDefault()
+        await saveChordEdit(index)
+    } else if (event.key === 'Escape') {
+        event.preventDefault()
+        cancelChordEdit()
+    }
+}
+
+const saveChordEdit = async (index) => {
+    console.log("editing value: ", editingValue.value)
+    const newChord = editingValue.value.trim()
+    
+    // Call setChord API
+    const response = await setChord(progression.value.id, index, newChord)
+    console.log('setChord called with:', { progressionId: progression.value.id, index, newChord })
+    console.log('setChord response:', response)
+    
+    if ("error" in response) {
+        error.value = response.error
+        editingSlot.value = null
+        editingValue.value = ''
+        originalValue.value = ''
+        return
+    }
+    
+    // Exit edit mode but keep slot selected
+    editingSlot.value = null
+    editingValue.value = ''
+    originalValue.value = ''
+    
+    // Reload the progression to get updated data
+    await loadProgression(PROGRESSION_ID)
+}
+
+const cancelChordEdit = () => {
+    // Revert to original value and exit edit mode
+    editingSlot.value = null
+    editingValue.value = ''
+    originalValue.value = ''
 }
 
 const handleAddSlot = async () => {
@@ -55,6 +129,12 @@ const handleAddSlot = async () => {
 
 const handleKeyDown = async (event) => {
     console.log('Key pressed:', event.key)
+    
+    // Don't handle global shortcuts while editing
+    if (editingSlot.value !== null) {
+        return
+    }
+    
     if (event.key === 'Backspace' && selectedSlot.value !== null) {
         const response = await deleteSlot(progression.value.id, selectedSlot.value)
         console.log('deleteSlot response:', response)
@@ -71,6 +151,12 @@ const handleKeyDown = async (event) => {
 }
 
 const handleDragStart = (event, index) => {
+    // Don't allow dragging while editing
+    if (editingSlot.value !== null) {
+        event.preventDefault()
+        return
+    }
+    
     draggedIndex.value = index
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', index)
@@ -199,14 +285,23 @@ onUnmounted(() => {
                   'slot-empty': !chord.chord,
                   'slot-selected': selectedSlot === index,
                   'slot-dragging': draggedIndex === index,
-                  'slot-drag-over': dragOverIndex === index
+                  'slot-drag-over': dragOverIndex === index,
+                  'slot-editing': editingSlot === index
                 }"
-                draggable="true"
+                :draggable="editingSlot === null"
                 @dragstart="handleDragStart($event, index)"
                 @dragend="handleDragEnd"
                 @click="handleSlotClick(index)"
+                @dblclick="handleSlotDoubleClick(index)"
               >
-                {{ chord.chord || 'Empty' }}
+                <input
+                  v-if="editingSlot === index"
+                  v-model="editingValue"
+                  class="chord-input"
+                  @keydown="handleInputKeyDown($event, index)"
+                  @click.stop
+                />
+                <span v-else>{{ chord.chord || 'Empty' }}</span>
               </div>
             </div>
             <div class="bar-cell">
@@ -388,5 +483,23 @@ onUnmounted(() => {
 .slot-drag-over {
   border: 3px dashed #9e9e9e;
   background: #7dd4b4;
+}
+
+.slot-editing {
+  cursor: text;
+  padding: 0;
+}
+
+.chord-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-align: center;
+  padding: 0 0.5rem;
 }
 </style>
