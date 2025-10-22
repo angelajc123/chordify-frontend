@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { getProgression, addSlot, deleteSlot, reorderSlots, setChord } from '../api/progression.js'
+import ChordSuggestion from './ChordSuggestion.vue'
 
 const progression = ref({
     id: '',
@@ -310,6 +311,14 @@ onUnmounted(() => {
             <div v-for="n in (7 - progression.chords.length)" :key="`empty-${n}`" class="bar-cell"></div>
           </div>
         </div>
+        
+        <!-- Chord Suggestion Component -->
+        <ChordSuggestion 
+          :progressionId="progression.id" 
+          :selectedSlot="selectedSlot"
+          :chords="progression.chords"
+          @chordUpdated="loadProgression(PROGRESSION_ID)"
+        />
       </div>
     </main>
   </div>
