@@ -19,7 +19,6 @@ const editingSlot = ref(null)
 const editingValue = ref('')
 const originalValue = ref('')
 
-// Hard-coded progression ID
 const PROGRESSION_ID = '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
 
 const loadProgression = async (progressionId) => {
@@ -38,33 +37,28 @@ const loadProgression = async (progressionId) => {
 }
 
 const handleSlotClick = async (index) => {
-    // If currently editing a different slot, save it first
     if (editingSlot.value !== null && editingSlot.value !== index) {
         await saveChordEdit(editingSlot.value)
     }
     
-    // Don't handle clicks on the slot being edited (let input handle it)
     if (editingSlot.value === index) {
         return
     }
     
     if (selectedSlot.value === index) {
-        selectedSlot.value = null // Unselect if already selected
+        selectedSlot.value = null
     } else {
-        selectedSlot.value = index // Select the slot
+        selectedSlot.value = index
     }
 }
 
 const handleSlotDoubleClick = async (index) => {
-    // Select the slot
     selectedSlot.value = index
     
-    // Enter edit mode
     editingSlot.value = index
     originalValue.value = progression.value.chords[index].chord || ''
     editingValue.value = originalValue.value
     
-    // Focus the input after it's rendered
     await nextTick()
     const input = document.querySelector('.chord-input')
     if (input) {
@@ -87,7 +81,6 @@ const saveChordEdit = async (index) => {
     console.log("editing value: ", editingValue.value)
     const newChord = editingValue.value.trim()
     
-    // Call setChord API
     const response = await setChord(progression.value.id, index, newChord)
     console.log('setChord called with:', { progressionId: progression.value.id, index, newChord })
     console.log('setChord response:', response)
@@ -100,17 +93,14 @@ const saveChordEdit = async (index) => {
         return
     }
     
-    // Exit edit mode but keep slot selected
     editingSlot.value = null
     editingValue.value = ''
     originalValue.value = ''
     
-    // Reload the progression to get updated data
     await loadProgression(PROGRESSION_ID)
 }
 
 const cancelChordEdit = () => {
-    // Revert to original value and exit edit mode
     editingSlot.value = null
     editingValue.value = ''
     originalValue.value = ''
@@ -125,14 +115,12 @@ const handleAddSlot = async () => {
         return
     }
     
-    // Reload the progression to get updated data
     await loadProgression(PROGRESSION_ID)
 }
 
 const handleKeyDown = async (event) => {
     console.log('Key pressed:', event.key)
     
-    // Don't handle global shortcuts while editing
     if (editingSlot.value !== null) {
         return
     }
@@ -146,14 +134,12 @@ const handleKeyDown = async (event) => {
             return
         }
         
-        // Clear selection and reload progression
         selectedSlot.value = null
         await loadProgression(PROGRESSION_ID)
     }
 }
 
 const handleDragStart = (event, index) => {
-    // Don't allow dragging while editing
     if (editingSlot.value !== null) {
         event.preventDefault()
         return
@@ -162,7 +148,6 @@ const handleDragStart = (event, index) => {
     draggedIndex.value = index
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', index)
-    // Add a slight opacity to the dragged element
     event.target.style.opacity = '0.5'
 }
 
@@ -193,10 +178,8 @@ const handleDrop = async (event, newIndex) => {
         return
     }
     
-    // Track if the dragged slot was selected
     const wasSelected = selectedSlot.value === oldIndex
     
-    // Call the reorder API
     const response = await reorderSlots(progression.value.id, oldIndex, newIndex)
     console.log('reorderSlots response:', response)
     
@@ -207,30 +190,30 @@ const handleDrop = async (event, newIndex) => {
         return
     }
     
-    // Reload the progression to get updated data
     await loadProgression(PROGRESSION_ID)
     
-    // Update selection to follow the moved chord
     if (wasSelected) {
         selectedSlot.value = newIndex
     } else if (selectedSlot.value !== null) {
-        // Adjust other selected slots if they were affected by the reorder
         if (oldIndex < newIndex) {
-            // Moving right: slots between oldIndex and newIndex shift left
             if (selectedSlot.value > oldIndex && selectedSlot.value <= newIndex) {
                 selectedSlot.value--
             }
         } else {
-            // Moving left: slots between newIndex and oldIndex shift right
             if (selectedSlot.value >= newIndex && selectedSlot.value < oldIndex) {
                 selectedSlot.value++
             }
         }
     }
     
-    // Clear drag state
     draggedIndex.value = null
     dragOverIndex.value = null
+}
+
+const handleOutsideClick = (event) => {
+    if (!event.target.closest('.slot') && !event.target.closest('.add-chord-btn')) {
+        selectedSlot.value = null
+    }
 }
 
 onMounted(async () => {
@@ -244,7 +227,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="progression-builder">
+  <div class="progression-builder" @click="handleOutsideClick">
     <header class="header">
       <h1>Chordify</h1>
     </header>
@@ -261,7 +244,6 @@ onUnmounted(() => {
       <div v-else class="progression-info">
         <h2>{{ progression.name }}</h2>
         
-        <!-- Playback Controls -->
         <PlaybackControls :progressionId="progression.id" />
         
         <div class="progression-bar">
@@ -316,7 +298,6 @@ onUnmounted(() => {
           </div>
         </div>
         
-        <!-- Chord Suggestion Component -->
         <ChordSuggestion 
           :progressionId="progression.id" 
           :selectedSlot="selectedSlot"
