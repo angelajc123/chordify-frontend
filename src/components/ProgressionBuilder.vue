@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { getProgression, addSlot, deleteSlot, reorderSlots, setChord } from '../api/progression.js'
 import ChordSuggestion from './ChordSuggestion.vue'
+import PlaybackControls from './PlaybackControls.vue'
 
 const progression = ref({
     id: '',
@@ -259,6 +260,9 @@ onUnmounted(() => {
       
       <div v-else class="progression-info">
         <h2>{{ progression.name }}</h2>
+        
+        <!-- Playback Controls -->
+        <PlaybackControls :progressionId="progression.id" />
         
         <div class="progression-bar">
           <div class="bar-numbers">
