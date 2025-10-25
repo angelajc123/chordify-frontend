@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getProgressionPreferences, setKey, setPreferredGenre, setComplexityLevel, suggestChord } from '../api/suggest.js'
+import { getSuggestionPreferences, setKey, setGenre, setComplexity, suggestChord } from '../api/suggest.js'
 import { setChord } from '../api/progression.js'
+import { GENRES, COMPLEXITY_LEVELS, NUM_SUGGESTIONS } from '../shared/constants.js'
 
 const emit = defineEmits(['chordUpdated'])
 
@@ -22,8 +23,8 @@ const props = defineProps({
 
 const preferences = ref({
   key: '',
-  preferredGenre: '',
-  complexityLevel: ''
+  genre: '',
+  complexity: ''
 })
 
 const error = ref(null)
@@ -31,24 +32,16 @@ const loading = ref(true)
 const suggestedChords = ref([])
 const generating = ref(false)
 
-// Dropdown options
-const keyOptions = [
+// Key options (not in shared constants as they're frontend-specific)
+const KEY_OPTIONS = [
   'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B',
   'Cm', 'C#m', 'Dbm', 'Dm', 'D#m', 'Ebm', 'Em', 'Fm', 'F#m', 'Gbm', 'Gm', 'G#m', 'Abm', 'Am', 'A#m', 'Bbm', 'Bm'
 ]
 
-const genreOptions = [
-  'Pop', 'Rock', 'Jazz', 'Blues', 'Classical', 'Country', 'R&B', 'Electronic', 'Hip Hop', 'Folk'
-]
-
-const complexityOptions = [
-  'Simple', 'Intermediate', 'Advanced', 'Expert'
-]
-
 const loadPreferences = async () => {
-  const response = await getProgressionPreferences(props.progressionId)
-  console.log('getProgressionPreferences response:', response)
-  console.log('progressionPreferences:', response.progressionPreferences)
+  const response = await getSuggestionPreferences(props.progressionId)
+  console.log('getSuggestionPreferences response:', response)
+  console.log('preferences:', response.preferences)
   
   if ("error" in response) {
     error.value = response.error
@@ -56,10 +49,10 @@ const loadPreferences = async () => {
     return
   }
   
-  if (response.progressionPreferences) {
-    preferences.value.key = response.progressionPreferences.key || ''
-    preferences.value.preferredGenre = response.progressionPreferences.preferredGenre || ''
-    preferences.value.complexityLevel = response.progressionPreferences.complexityLevel || ''
+  if (response.preferences) {
+    preferences.value.key = response.preferences.key || ''
+    preferences.value.genre = response.preferences.genre || ''
+    preferences.value.complexity = response.preferences.complexity || ''
     
     console.log('Loaded preferences:', preferences.value)
   }
@@ -82,27 +75,27 @@ const handleKeyChange = async (event) => {
 
 const handleGenreChange = async (event) => {
   const newGenre = event.target.value
-  const response = await setPreferredGenre(props.progressionId, newGenre)
+  const response = await setGenre(props.progressionId, newGenre)
   
   if ("error" in response) {
     error.value = response.error
     return
   }
   
-  preferences.value.preferredGenre = newGenre
+  preferences.value.genre = newGenre
   console.log('Genre updated to:', newGenre)
 }
 
 const handleComplexityChange = async (event) => {
   const newComplexity = event.target.value
-  const response = await setComplexityLevel(props.progressionId, newComplexity)
+  const response = await setComplexity(props.progressionId, newComplexity)
   
   if ("error" in response) {
     error.value = response.error
     return
   }
   
-  preferences.value.complexityLevel = newComplexity
+  preferences.value.complexity = newComplexity
   console.log('Complexity updated to:', newComplexity)
 }
 
@@ -176,7 +169,7 @@ onMounted(async () => {
           @change="handleKeyChange"
           class="preference-select"
         >
-          <option v-for="key in keyOptions" :key="key" :value="key">
+          <option v-for="key in KEY_OPTIONS" :key="key" :value="key">
             {{ key }}
           </option>
         </select>
@@ -186,11 +179,11 @@ onMounted(async () => {
         <label for="genre-select">Genre</label>
         <select 
           id="genre-select" 
-          v-model="preferences.preferredGenre" 
+          v-model="preferences.genre" 
           @change="handleGenreChange"
           class="preference-select"
         >
-          <option v-for="genre in genreOptions" :key="genre" :value="genre">
+          <option v-for="genre in GENRES" :key="genre" :value="genre">
             {{ genre }}
           </option>
         </select>
@@ -200,11 +193,11 @@ onMounted(async () => {
         <label for="complexity-select">Complexity</label>
         <select 
           id="complexity-select" 
-          v-model="preferences.complexityLevel" 
+          v-model="preferences.complexity" 
           @change="handleComplexityChange"
           class="preference-select"
         >
-          <option v-for="complexity in complexityOptions" :key="complexity" :value="complexity">
+          <option v-for="complexity in COMPLEXITY_LEVELS" :key="complexity" :value="complexity">
             {{ complexity }}
           </option>
         </select>
@@ -219,7 +212,7 @@ onMounted(async () => {
     <!-- Suggestion Grid -->
     <div class="suggestion-grid">
       <div 
-        v-for="(chord, index) in 24" 
+        v-for="(chord, index) in NUM_SUGGESTIONS" 
         :key="index" 
         class="suggestion-box"
         :class="{ 'suggestion-box-clickable': suggestedChords[index] }"

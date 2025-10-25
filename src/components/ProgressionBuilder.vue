@@ -30,10 +30,11 @@ const loadProgression = async (progressionId) => {
         return
     }
 
-    progression.value.id = response.progression._id
-    progression.value.name = response.progression.name
-    progression.value.chords = response.progression.chordSequence
+    progression.value.id = response.progression._id || ''
+    progression.value.name = response.progression.name || ''
+    progression.value.chords = response.progression.chords || []
     loading.value = false
+    console.log("progression: ", progression.value)
 }
 
 const handleSlotClick = async (index) => {

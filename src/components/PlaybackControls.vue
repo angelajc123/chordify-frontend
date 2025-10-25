@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { getProgressionSettings, setInstrument, setSecondsPerChord } from '../api/playback.js'
+import { getPlayBackSettings, setInstrument, setSecondsPerChord } from '../api/playback.js'
+import { MIN_SECONDS_PER_CHORD, MAX_SECONDS_PER_CHORD, INSTRUMENTS } from '../shared/constants.js'
 
 const props = defineProps({
   progressionId: {
@@ -16,23 +17,19 @@ const preferences = ref({
 
 const isPlaying = ref(false)
 const isLooping = ref(false)
-const loading = ref(true)
 const error = ref(null)
+const loading = ref(true)
 const inputValue = ref('')
-const MIN_SECONDS_PER_CHORD = 1
-const MAX_SECONDS_PER_CHORD = 10
 
-const instruments = [
-  { value: 'piano', label: 'Piano' },
-  { value: 'guitar', label: 'Guitar' },
-  { value: 'synth', label: 'Synth' },
-  { value: 'bass', label: 'Bass' },
-  { value: 'strings', label: 'Strings' }
-]
+// Map INSTRUMENTS constant to dropdown format
+const instruments = INSTRUMENTS.map(instrument => ({
+  value: instrument,
+  label: instrument
+}))
 
 const loadPreferences = async () => {
-  const response = await getProgressionSettings(props.progressionId)
-  console.log('getProgressionSettings response:', response)
+  const response = await getPlayBackSettings(props.progressionId)
+  console.log('getPlayBackSettings response:', response)
 
   if ("error" in response) {
     error.value = response.error
@@ -41,7 +38,7 @@ const loadPreferences = async () => {
   }
 
   if (response.settings) {
-    preferences.value.instrument = response.settings.instrument || 'piano'
+    preferences.value.instrument = response.settings.instrument || 'Piano'
     preferences.value.secondsPerChord = response.settings.secondsPerChord || 2
     inputValue.value = preferences.value.secondsPerChord.toString()
     console.log('Loaded playback settings:', preferences.value)
