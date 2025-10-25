@@ -12,6 +12,7 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
+    "tonal": "^6.4.2",
     "vue": "^3.4.21"
   },
   "devDependencies": {
