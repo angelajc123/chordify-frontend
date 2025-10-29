@@ -3,6 +3,10 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { getProgression, addSlot, deleteSlot, reorderSlots, setChord } from '../api/progression.js'
 import ChordSuggestion from './ChordSuggestion.vue'
 import PlaybackControls from './PlaybackControls.vue'
+import { isValidChord } from '../shared/constants.js'
+
+const PROGRESSION_ID = '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
+const MAX_BAR_CELLS = 8
 
 const progression = ref({
     id: '',
@@ -10,20 +14,27 @@ const progression = ref({
     chords: []
 })
 
+// UI state
 const error = ref(null)
 const loading = ref(true)
 const selectedSlot = ref(null)
+
+// Drag and drop state
 const draggedIndex = ref(null)
 const dragOverIndex = ref(null)
+
+// Editing state
 const editingSlot = ref(null)
 const editingValue = ref('')
 const originalValue = ref('')
 
-const PROGRESSION_ID = '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
+// Component refs
+const playbackControlsRef = ref(null)
 
+//----------- Data Loading -----------
 const loadProgression = async (progressionId) => {
     const response = await getProgression(progressionId)
-    console.log(response)
+    console.log('Loaded progression:', response)
 
     if ("error" in response) {
         error.value = response.error
@@ -34,9 +45,9 @@ const loadProgression = async (progressionId) => {
     progression.value.name = response.progression.name || ''
     progression.value.chords = response.progression.chords || []
     loading.value = false
-    console.log("progression: ", progression.value)
 }
 
+//----------- Slot Selection & Interaction -----------
 const handleSlotClick = async (index) => {
     if (editingSlot.value !== null && editingSlot.value !== index) {
         await saveChordEdit(editingSlot.value)
@@ -46,20 +57,18 @@ const handleSlotClick = async (index) => {
         return
     }
     
-    if (selectedSlot.value === index) {
-        selectedSlot.value = null
-    } else {
-        selectedSlot.value = index
-    }
+    selectedSlot.value = selectedSlot.value === index ? null : index
 }
 
 const handleSlotDoubleClick = async (index) => {
     selectedSlot.value = index
-    
     editingSlot.value = index
+    
+    // Store original value for potential cancellation
     originalValue.value = progression.value.chords[index].chord || ''
     editingValue.value = originalValue.value
     
+    // Focus and select the input field
     await nextTick()
     const input = document.querySelector('.chord-input')
     if (input) {
@@ -68,6 +77,7 @@ const handleSlotDoubleClick = async (index) => {
     }
 }
 
+//----------- Chord Editing -----------
 const handleInputKeyDown = async (event, index) => {
     if (event.key === 'Enter') {
         event.preventDefault()
@@ -79,37 +89,41 @@ const handleInputKeyDown = async (event, index) => {
 }
 
 const saveChordEdit = async (index) => {
-    console.log("editing value: ", editingValue.value)
     const newChord = editingValue.value.trim()
+    if (!isValidChord(newChord)) {
+      console.log('Invalid chord:', newChord)
+      cancelChordEdit()
+      return
+    }
+
+    console.log('Saving chord edit:', { index, newChord })
     
     const response = await setChord(progression.value.id, index, newChord)
-    console.log('setChord called with:', { progressionId: progression.value.id, index, newChord })
-    console.log('setChord response:', response)
     
     if ("error" in response) {
         error.value = response.error
-        editingSlot.value = null
-        editingValue.value = ''
-        originalValue.value = ''
+        clearEditingState()
         return
     }
     
-    editingSlot.value = null
-    editingValue.value = ''
-    originalValue.value = ''
-    
+    clearEditingState()
     await loadProgression(PROGRESSION_ID)
 }
 
 const cancelChordEdit = () => {
+    clearEditingState()
+}
+
+const clearEditingState = () => {
     editingSlot.value = null
     editingValue.value = ''
     originalValue.value = ''
 }
 
+//----------- Slot Management (Add/Delete) -----------
 const handleAddSlot = async () => {
     const response = await addSlot(progression.value.id)
-    console.log('addSlot response:', response)
+    console.log('Add slot response:', response)
     
     if ("error" in response) {
         error.value = response.error
@@ -120,15 +134,15 @@ const handleAddSlot = async () => {
 }
 
 const handleKeyDown = async (event) => {
-    console.log('Key pressed:', event.key)
-    
+    // Don't handle shortcuts while editing
     if (editingSlot.value !== null) {
         return
     }
     
+    // Delete selected slot with Backspace
     if (event.key === 'Backspace' && selectedSlot.value !== null) {
         const response = await deleteSlot(progression.value.id, selectedSlot.value)
-        console.log('deleteSlot response:', response)
+        console.log('Delete slot response:', response)
         
         if ("error" in response) {
             error.value = response.error
@@ -140,7 +154,9 @@ const handleKeyDown = async (event) => {
     }
 }
 
+//----------- Drag and Drop -----------
 const handleDragStart = (event, index) => {
+    // Prevent dragging while editing
     if (editingSlot.value !== null) {
         event.preventDefault()
         return
@@ -154,8 +170,7 @@ const handleDragStart = (event, index) => {
 
 const handleDragEnd = (event) => {
     event.target.style.opacity = '1'
-    draggedIndex.value = null
-    dragOverIndex.value = null
+    clearDragState()
 }
 
 const handleDragOver = (event, index) => {
@@ -173,50 +188,55 @@ const handleDrop = async (event, newIndex) => {
     
     const oldIndex = draggedIndex.value
     
+    // Ignore invalid drops
     if (oldIndex === null || oldIndex === newIndex) {
-        draggedIndex.value = null
-        dragOverIndex.value = null
+        clearDragState()
         return
     }
     
     const wasSelected = selectedSlot.value === oldIndex
     
     const response = await reorderSlots(progression.value.id, oldIndex, newIndex)
-    console.log('reorderSlots response:', response)
+    console.log('Reorder slots response:', response)
     
     if ("error" in response) {
         error.value = response.error
-        draggedIndex.value = null
-        dragOverIndex.value = null
+        clearDragState()
         return
     }
     
     await loadProgression(PROGRESSION_ID)
     
+    // Update selection to follow the moved slot
+    updateSelectionAfterReorder(oldIndex, newIndex, wasSelected)
+    clearDragState()
+}
+
+const updateSelectionAfterReorder = (oldIndex, newIndex, wasSelected) => {
     if (wasSelected) {
         selectedSlot.value = newIndex
     } else if (selectedSlot.value !== null) {
+        // Adjust selection if it was affected by the reorder
         if (oldIndex < newIndex) {
+            // Moving right: decrement selection if it's in the affected range
             if (selectedSlot.value > oldIndex && selectedSlot.value <= newIndex) {
                 selectedSlot.value--
             }
         } else {
+            // Moving left: increment selection if it's in the affected range
             if (selectedSlot.value >= newIndex && selectedSlot.value < oldIndex) {
                 selectedSlot.value++
             }
         }
     }
-    
+}
+
+const clearDragState = () => {
     draggedIndex.value = null
     dragOverIndex.value = null
 }
 
-const handleOutsideClick = (event) => {
-    if (!event.target.closest('.slot') && !event.target.closest('.add-chord-btn')) {
-        selectedSlot.value = null
-    }
-}
-
+// --------- Lifecycle Hooks ---------
 onMounted(async () => {
     await loadProgression(PROGRESSION_ID)
     window.addEventListener('keydown', handleKeyDown)
@@ -228,7 +248,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="progression-builder" @click="handleOutsideClick">
+  <div class="progression-builder">
     <header class="header">
       <h1>Chordify</h1>
     </header>
@@ -245,7 +265,7 @@ onUnmounted(() => {
       <div v-else class="progression-info">
         <h2>{{ progression.name }}</h2>
         
-        <PlaybackControls :progressionId="progression.id" />
+        <PlaybackControls ref="playbackControlsRef" :progressionId="progression.id" :chords="progression.chords" :selectedSlot="selectedSlot"/>
         
         <div class="progression-bar">
           <div class="bar-numbers">
@@ -295,7 +315,7 @@ onUnmounted(() => {
             <div class="bar-cell">
               <button class="add-chord-btn" @click="handleAddSlot">+</button>
             </div>
-            <div v-for="n in (7 - progression.chords.length)" :key="`empty-${n}`" class="bar-cell"></div>
+            <div v-for="n in (MAX_BAR_CELLS - 1 - progression.chords.length)" :key="`empty-${n}`" class="bar-cell"></div>
           </div>
         </div>
         
@@ -303,6 +323,7 @@ onUnmounted(() => {
           :progressionId="progression.id" 
           :selectedSlot="selectedSlot"
           :chords="progression.chords"
+          :playbackControls="playbackControlsRef"
           @chordUpdated="loadProgression(PROGRESSION_ID)"
         />
       </div>

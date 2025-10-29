@@ -18,6 +18,10 @@ const props = defineProps({
   chords: {
     type: Array,
     required: true
+  },
+  playbackControls: {
+    type: Object,
+    default: null
   }
 })
 
@@ -126,6 +130,15 @@ const handleGenerateChord = async () => {
   generating.value = false
 }
 
+const handleChordSingleClick = async (chord) => {
+  if (!chord) return
+  
+  // Play the chord using PlaybackControls
+  if (props.playbackControls) {
+    props.playbackControls.playSuggestedChord(chord)
+  }
+}
+
 const handleChordClick = async (chord) => {
   if (!chord || props.selectedSlot === null) {
     return
@@ -216,7 +229,8 @@ onMounted(async () => {
         :key="index" 
         class="suggestion-box"
         :class="{ 'suggestion-box-clickable': suggestedChords[index] }"
-        @click="handleChordClick(suggestedChords[index])"
+        @click="handleChordSingleClick(suggestedChords[index])"
+        @dblclick="handleChordClick(suggestedChords[index])"
       >
         {{ suggestedChords[index] || '' }}
       </div>
@@ -349,6 +363,7 @@ onMounted(async () => {
   color: #35495e;
   transition: all 0.2s;
   font-size: 1.2rem;
+  user-select: none;
 }
 
 .suggestion-box:hover {

@@ -1,12 +1,21 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { getPlayBackSettings, setInstrument, setSecondsPerChord } from '../api/playback.js'
+import { ref, onMounted, computed, watch } from 'vue'
+import { getPlayBackSettings, getProgressionNotes, setInstrument, setSecondsPerChord } from '../api/playback.js'
 import { MIN_SECONDS_PER_CHORD, MAX_SECONDS_PER_CHORD, INSTRUMENTS } from '../shared/constants.js'
+import * as Tone from 'tone'
 
 const props = defineProps({
   progressionId: {
     type: String,
     required: true
+  },
+  chords: {
+    type: Array,
+    required: true
+  },
+  selectedSlot: {
+    type: Number,
+    default: null
   }
 })
 
@@ -17,9 +26,14 @@ const preferences = ref({
 
 const isPlaying = ref(false)
 const isLooping = ref(false)
+const isMuted = ref(false)
 const error = ref(null)
 const loading = ref(true)
 const inputValue = ref('')
+let currentSynth = null
+let playbackTimeout = null
+let selectionSynth = null
+let suggestionSynth = null
 
 // Map INSTRUMENTS constant to dropdown format
 const instruments = INSTRUMENTS.map(instrument => ({
@@ -39,7 +53,7 @@ const loadPreferences = async () => {
 
   if (response.settings) {
     preferences.value.instrument = response.settings.instrument || 'Piano'
-    preferences.value.secondsPerChord = response.settings.secondsPerChord || 2
+    preferences.value.secondsPerChord = response.settings.secondsPerChord || 1
     inputValue.value = preferences.value.secondsPerChord.toString()
     console.log('Loaded playback settings:', preferences.value)
   }
@@ -47,15 +61,175 @@ const loadPreferences = async () => {
   loading.value = false
 }
 
-const togglePlay = () => {
-  isPlaying.value = !isPlaying.value
-  // TODO: Implement playback logic
+const playProgression = async () => {
+  // Start Tone.js audio context (required by browsers)
+  await Tone.start()
+  
+  const chords = props.chords.map(chord => chord.chord)
+  const response = await getProgressionNotes(chords)
+  const notes = response.notes
+  console.log('notes:', notes)
+  
+  // Dispose of previous synth if it exists
+  if (currentSynth) {
+    currentSynth.dispose()
+  }
+  
+  currentSynth = new Tone.PolySynth(Tone.FMSynth, {
+    harmonicity: 8,
+    modulationIndex: 2,
+    envelope: {
+      attack: 0.001,
+      decay: 2,
+      sustain: 0.1,
+      release: 2
+    },
+    modulation: {
+      type: "square"
+    },
+    modulationEnvelope: {
+      attack: 0.002,
+      decay: 0.2,
+      sustain: 0,
+      release: 0.2
+    }
+  }).toDestination();
+
+  for (let i = 0; i < notes.length; i++) {
+    currentSynth.triggerAttackRelease(notes[i], preferences.value.secondsPerChord, `+${i * preferences.value.secondsPerChord}`)
+  }
+
+  const totalDuration = notes.length * preferences.value.secondsPerChord * 1000
+  playbackTimeout = setTimeout(() => {
+    // Check if looping is enabled and playback is still active
+    if (isLooping.value && isPlaying.value) {
+      console.log('Looping progression')
+      playProgression()
+    } else {
+      isPlaying.value = false
+      currentSynth = null
+      playbackTimeout = null
+      console.log('Playback finished')
+    }
+  }, totalDuration)
+}
+
+const togglePlay = async () => {
+  // If already playing, stop playback
+  if (isPlaying.value) {
+    isPlaying.value = false
+    
+    // Clear the timeout
+    if (playbackTimeout) {
+      clearTimeout(playbackTimeout)
+      playbackTimeout = null
+    }
+    
+    // Stop and dispose of the synth
+    if (currentSynth) {
+      currentSynth.releaseAll()
+      currentSynth.dispose()
+      currentSynth = null
+    }
+    
+    console.log('Playback stopped')
+    return
+  }
+
+  // Stop any selection or suggestion synth when starting playback
+  if (selectionSynth) {
+    selectionSynth.releaseAll()
+    selectionSynth.dispose()
+    selectionSynth = null
+  }
+  if (suggestionSynth) {
+    suggestionSynth.releaseAll()
+    suggestionSynth.dispose()
+    suggestionSynth = null
+  }
+
+  // Start playback
+  isPlaying.value = true
+  await playProgression()
+  
   console.log('Play toggled:', isPlaying.value)
 }
+
+const playSelectedChord = async (slotIndex) => {
+  if (slotIndex === null) return
+  
+  const chord = props.chords[slotIndex]?.chord
+  if (!chord) return
+  
+  // Don't play selection if progression is playing
+  if (isPlaying.value) return
+  
+  try {
+    // Start Tone.js audio context
+    await Tone.start()
+    
+    // Get notes for the chord
+    const response = await getProgressionNotes([chord])
+    const notes = response.notes
+    
+    if (!notes || notes.length === 0) return
+    
+    // Stop any currently playing selection or suggestion synth
+    if (selectionSynth) {
+      selectionSynth.releaseAll()
+      selectionSynth.dispose()
+    }
+    if (suggestionSynth) {
+      suggestionSynth.releaseAll()
+      suggestionSynth.dispose()
+      suggestionSynth = null
+    }
+    
+    // Create and play the synth
+    selectionSynth = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 8,
+      modulationIndex: 2,
+      envelope: {
+        attack: 0.001,
+        decay: 2,
+        sustain: 0.1,
+        release: 2
+      },
+      modulation: {
+        type: "square"
+      },
+      modulationEnvelope: {
+        attack: 0.002,
+        decay: 0.2,
+        sustain: 0,
+        release: 0.2
+      }
+    }).toDestination()
+    
+    selectionSynth.triggerAttackRelease(notes[0], preferences.value.secondsPerChord)
+    
+    console.log('Playing selected chord:', chord)
+  } catch (error) {
+    console.error('Error playing chord:', error)
+  }
+}
+
+// Watch for slot selection changes and play the chord
+watch(() => props.selectedSlot, (newSlot, oldSlot) => {
+  // Only play if a new slot is selected (not when deselecting)
+  if (newSlot !== null && newSlot !== oldSlot) {
+    playSelectedChord(newSlot)
+  }
+})
 
 const toggleLoop = () => {
   isLooping.value = !isLooping.value
   console.log('Loop toggled:', isLooping.value)
+}
+
+const toggleMute = () => {
+  isMuted.value = !isMuted.value
+  console.log('Mute toggled:', isMuted.value)
 }
 
 const handleInstrumentChange = async (event) => {
@@ -120,6 +294,69 @@ const decrementSeconds = async () => {
   }
 }
 
+const playSuggestedChord = async (chord) => {
+  if (!chord) return
+  
+  // Don't play suggestion if progression is playing
+  if (isPlaying.value) return
+  
+  try {
+    // Start Tone.js audio context
+    await Tone.start()
+    
+    // Get notes for the chord
+    const response = await getProgressionNotes([chord])
+    const notes = response.notes
+    
+    if (!notes || notes.length === 0) return
+    
+    // Stop any currently playing suggestion synth
+    if (suggestionSynth) {
+      suggestionSynth.releaseAll()
+      suggestionSynth.dispose()
+    }
+    
+    // Stop selection synth if playing
+    if (selectionSynth) {
+      selectionSynth.releaseAll()
+      selectionSynth.dispose()
+      selectionSynth = null
+    }
+    
+    // Create and play the synth
+    suggestionSynth = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 8,
+      modulationIndex: 2,
+      envelope: {
+        attack: 0.001,
+        decay: 2,
+        sustain: 0.1,
+        release: 2
+      },
+      modulation: {
+        type: "square"
+      },
+      modulationEnvelope: {
+        attack: 0.002,
+        decay: 0.2,
+        sustain: 0,
+        release: 0.2
+      }
+    }).toDestination()
+    
+    suggestionSynth.triggerAttackRelease(notes[0], preferences.value.secondsPerChord)
+    
+    console.log('Playing suggested chord:', chord)
+  } catch (error) {
+    console.error('Error playing suggested chord:', error)
+  }
+}
+
+// Expose function to parent component
+defineExpose({
+  playSuggestedChord
+})
+
 onMounted(async () => {
   await loadPreferences()
 })
@@ -161,6 +398,24 @@ onMounted(async () => {
           <path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
           <path d="M7 22l-4-4 4-4"/>
           <path d="M21 13v1a4 4 0 0 1-4 4H3"/>
+        </svg>
+      </button>
+
+      <button 
+        class="control-btn mute-btn" 
+        :class="{ 'active': isMuted }"
+        @click="toggleMute"
+        :title="isMuted ? 'Unmute' : 'Mute'"
+      >
+        <svg v-if="!isMuted" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="23" y1="9" x2="17" y2="15"/>
+          <line x1="17" y1="9" x2="23" y2="15"/>
         </svg>
       </button>
 
@@ -257,10 +512,6 @@ onMounted(async () => {
   color: white;
 }
 
-.play-btn {
-  width: 60px;
-  height: 60px;
-}
 
 .control-group {
   display: flex;
@@ -333,6 +584,7 @@ onMounted(async () => {
   font-size: 1rem;
   color: #35495e;
   font-weight: 600;
+  background: #ffffff;
   transition: all 0.2s;
 }
 
