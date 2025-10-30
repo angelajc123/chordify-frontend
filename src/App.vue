@@ -1,10 +1,9 @@
 <script setup>
-import ProgressionBuilder from './components/ProgressionBuilder.vue'
 </script>
 
 <template>
   <div id="app">
-    <ProgressionBuilder />
+    <router-view />
   </div>
 </template>
 

@@ -24,6 +24,64 @@ const preferences = ref({
   secondsPerChord: 0,
 })
 
+const synths = {
+  Piano: function() {
+    // return new Tone.Piano().toDestination()
+    // return new Tone.Sampler({
+    //   urls: {
+    //     C4: "C4.mp3",
+    //     E4: "E4.mp3",
+    //     G4: "G4.mp3",
+    //   },
+    //   release: 1,
+    //   baseUrl: "https://tonejs.github.io/audio/salamander/"
+    // }).toDestination();
+    return new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 8,
+      modulationIndex: 2,
+      envelope: {
+        attack: 0.001,
+        decay: 2,
+        sustain: 0.1,
+        release: 2
+      },
+      modulation: {
+        type: "square"
+      },
+      modulationEnvelope: {
+        attack: 0.002,
+        decay: 0.2,
+        sustain: 0,
+        release: 0.2
+      }
+    }).toDestination()
+  },
+  Guitar: function() {
+    return new Tone.PolySynth(Tone.AMSynth, {
+      harmonicity: 8,
+      modulationIndex: 2,
+      envelope: {
+        attack: 0.001,
+        decay: 2,
+        sustain: 0.1,
+        release: 2
+      },
+      modulation: {
+        type: "square"
+      },
+      modulationEnvelope: {
+        attack: 0.002,
+        decay: 0.2,
+        sustain: 0,
+        release: 0.2
+      }
+    }).toDestination()
+  },
+  Synthesizer: function() {
+    return new Tone.PolySynth(Tone.AMSynth).toDestination()
+  }
+}
+
 const isPlaying = ref(false)
 const isLooping = ref(false)
 const isMuted = ref(false)
@@ -33,7 +91,6 @@ const inputValue = ref('')
 let currentSynth = null
 let playbackTimeout = null
 let selectionSynth = null
-let suggestionSynth = null
 
 // Map INSTRUMENTS constant to dropdown format
 const instruments = INSTRUMENTS.map(instrument => ({
@@ -61,57 +118,13 @@ const loadPreferences = async () => {
   loading.value = false
 }
 
+const createSynth = () => {
+  return synths[preferences.value.instrument]()
+}
+
 const playProgression = async () => {
-  // Start Tone.js audio context (required by browsers)
-  await Tone.start()
-  
   const chords = props.chords.map(chord => chord.chord)
-  const response = await getProgressionNotes(chords)
-  const notes = response.notes
-  console.log('notes:', notes)
-  
-  // Dispose of previous synth if it exists
-  if (currentSynth) {
-    currentSynth.dispose()
-  }
-  
-  currentSynth = new Tone.PolySynth(Tone.FMSynth, {
-    harmonicity: 8,
-    modulationIndex: 2,
-    envelope: {
-      attack: 0.001,
-      decay: 2,
-      sustain: 0.1,
-      release: 2
-    },
-    modulation: {
-      type: "square"
-    },
-    modulationEnvelope: {
-      attack: 0.002,
-      decay: 0.2,
-      sustain: 0,
-      release: 0.2
-    }
-  }).toDestination();
-
-  for (let i = 0; i < notes.length; i++) {
-    currentSynth.triggerAttackRelease(notes[i], preferences.value.secondsPerChord, `+${i * preferences.value.secondsPerChord}`)
-  }
-
-  const totalDuration = notes.length * preferences.value.secondsPerChord * 1000
-  playbackTimeout = setTimeout(() => {
-    // Check if looping is enabled and playback is still active
-    if (isLooping.value && isPlaying.value) {
-      console.log('Looping progression')
-      playProgression()
-    } else {
-      isPlaying.value = false
-      currentSynth = null
-      playbackTimeout = null
-      console.log('Playback finished')
-    }
-  }, totalDuration)
+  await playProgressionSequence(chords, true)
 }
 
 const togglePlay = async () => {
@@ -136,16 +149,11 @@ const togglePlay = async () => {
     return
   }
 
-  // Stop any selection or suggestion synth when starting playback
+  // Stop any selection synth when starting playback
   if (selectionSynth) {
     selectionSynth.releaseAll()
     selectionSynth.dispose()
     selectionSynth = null
-  }
-  if (suggestionSynth) {
-    suggestionSynth.releaseAll()
-    suggestionSynth.dispose()
-    suggestionSynth = null
   }
 
   // Start playback
@@ -161,8 +169,8 @@ const playSelectedChord = async (slotIndex) => {
   const chord = props.chords[slotIndex]?.chord
   if (!chord) return
   
-  // Don't play selection if progression is playing
-  if (isPlaying.value) return
+  // Stop any currently playing progression
+  stopAllPlayback()
   
   try {
     // Start Tone.js audio context
@@ -174,37 +182,14 @@ const playSelectedChord = async (slotIndex) => {
     
     if (!notes || notes.length === 0) return
     
-    // Stop any currently playing selection or suggestion synth
+    // Stop any currently playing selection synth
     if (selectionSynth) {
       selectionSynth.releaseAll()
       selectionSynth.dispose()
     }
-    if (suggestionSynth) {
-      suggestionSynth.releaseAll()
-      suggestionSynth.dispose()
-      suggestionSynth = null
-    }
     
     // Create and play the synth
-    selectionSynth = new Tone.PolySynth(Tone.FMSynth, {
-      harmonicity: 8,
-      modulationIndex: 2,
-      envelope: {
-        attack: 0.001,
-        decay: 2,
-        sustain: 0.1,
-        release: 2
-      },
-      modulation: {
-        type: "square"
-      },
-      modulationEnvelope: {
-        attack: 0.002,
-        decay: 0.2,
-        sustain: 0,
-        release: 0.2
-      }
-    }).toDestination()
+    selectionSynth = synths[preferences.value.instrument]()
     
     selectionSynth.triggerAttackRelease(notes[0], preferences.value.secondsPerChord)
     
@@ -297,8 +282,8 @@ const decrementSeconds = async () => {
 const playSuggestedChord = async (chord) => {
   if (!chord) return
   
-  // Don't play suggestion if progression is playing
-  if (isPlaying.value) return
+  // Stop any currently playing progression
+  stopAllPlayback()
   
   try {
     // Start Tone.js audio context
@@ -310,12 +295,6 @@ const playSuggestedChord = async (chord) => {
     
     if (!notes || notes.length === 0) return
     
-    // Stop any currently playing suggestion synth
-    if (suggestionSynth) {
-      suggestionSynth.releaseAll()
-      suggestionSynth.dispose()
-    }
-    
     // Stop selection synth if playing
     if (selectionSynth) {
       selectionSynth.releaseAll()
@@ -324,27 +303,9 @@ const playSuggestedChord = async (chord) => {
     }
     
     // Create and play the synth
-    suggestionSynth = new Tone.PolySynth(Tone.FMSynth, {
-      harmonicity: 8,
-      modulationIndex: 2,
-      envelope: {
-        attack: 0.001,
-        decay: 2,
-        sustain: 0.1,
-        release: 2
-      },
-      modulation: {
-        type: "square"
-      },
-      modulationEnvelope: {
-        attack: 0.002,
-        decay: 0.2,
-        sustain: 0,
-        release: 0.2
-      }
-    }).toDestination()
+    selectionSynth = synths[preferences.value.instrument]()
     
-    suggestionSynth.triggerAttackRelease(notes[0], preferences.value.secondsPerChord)
+    selectionSynth.triggerAttackRelease(notes[0], preferences.value.secondsPerChord)
     
     console.log('Playing suggested chord:', chord)
   } catch (error) {
@@ -352,9 +313,83 @@ const playSuggestedChord = async (chord) => {
   }
 }
 
-// Expose function to parent component
+const stopAllPlayback = () => {
+  // Stop main playback
+  if (isPlaying.value) {
+    isPlaying.value = false
+  }
+  
+  // Clear timeout
+  if (playbackTimeout) {
+    clearTimeout(playbackTimeout)
+    playbackTimeout = null
+  }
+  
+  // Stop and dispose of all synths
+  if (currentSynth) {
+    currentSynth.releaseAll()
+    currentSynth.dispose()
+    currentSynth = null
+  }
+  
+  if (selectionSynth) {
+    selectionSynth.releaseAll()
+    selectionSynth.dispose()
+    selectionSynth = null
+  }
+  
+  console.log('All playback stopped')
+}
+
+const stopProgressionPlayback = () => {
+  stopAllPlayback()
+}
+
+const playProgressionSequence = async (chords, fromMainPlayback = false) => {
+  if (!chords?.length) return
+  
+  // Stop any currently playing audio (but preserve isPlaying if from main playback)
+  const wasPlaying = isPlaying.value
+  stopAllPlayback()
+  if (fromMainPlayback && wasPlaying) {
+    isPlaying.value = true
+  }
+  
+  await Tone.start()
+  
+  // Get all notes for the progression
+  const response = await getProgressionNotes(chords)
+  if (!response.notes?.length) return
+  
+  // Create synth and schedule all notes
+  currentSynth = createSynth()
+  
+  for (let i = 0; i < response.notes.length; i++) {
+    currentSynth.triggerAttackRelease(response.notes[i], preferences.value.secondsPerChord, `+${i * preferences.value.secondsPerChord}`)
+  }
+  
+  // Set timeout to clean up after playback completes
+  const totalDuration = response.notes.length * preferences.value.secondsPerChord * 1000
+  playbackTimeout = setTimeout(() => {
+    if (isLooping.value && isPlaying.value) {
+      playProgression()
+    } else {
+      isPlaying.value = false
+      if (currentSynth) {
+        currentSynth.dispose()
+        currentSynth = null
+      }
+      playbackTimeout = null
+    }
+  }, totalDuration)
+}
+
+// Expose functions and preferences to parent component
 defineExpose({
-  playSuggestedChord
+  playSuggestedChord,
+  playProgressionSequence,
+  stopProgressionPlayback,
+  preferences
 })
 
 onMounted(async () => {

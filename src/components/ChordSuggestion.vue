@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getSuggestionPreferences, setKey, setGenre, setComplexity, suggestChord } from '../api/suggest.js'
+import { getSuggestionPreferences, setKey, setGenre, setComplexity, suggestChord, suggestProgression } from '../api/suggest.js'
 import { setChord } from '../api/progression.js'
-import { GENRES, COMPLEXITY_LEVELS, NUM_SUGGESTIONS } from '../shared/constants.js'
+import { GENRES, COMPLEXITY_LEVELS, NUM_SUGGESTIONS, NUM_PROGESSION_SUGGESTIONS } from '../shared/constants.js'
 
 const emit = defineEmits(['chordUpdated'])
 
@@ -22,6 +22,10 @@ const props = defineProps({
   playbackControls: {
     type: Object,
     default: null
+  },
+  onUseProgression: {
+    type: Function,
+    default: null
   }
 })
 
@@ -35,6 +39,10 @@ const error = ref(null)
 const loading = ref(true)
 const suggestedChords = ref([])
 const generating = ref(false)
+const suggestedProgressions = ref([])
+const generatingProgressions = ref(false)
+const playingProgressionIndex = ref(null)
+let progressionPlaybackTimeout = null
 
 // Key options (not in shared constants as they're frontend-specific)
 const KEY_OPTIONS = [
@@ -111,6 +119,9 @@ const handleGenerateChord = async () => {
   generating.value = true
   error.value = null
   
+  // Clear progression suggestions to switch back to chord view
+  suggestedProgressions.value = []
+  
   // Convert chords array to the format expected by the API
   const chordsArray = props.chords.map(c => c.chord)
   
@@ -154,6 +165,81 @@ const handleChordClick = async (chord) => {
   
   // Emit event to parent to reload progression
   emit('chordUpdated')
+}
+
+const handleGenerateProgression = async () => {
+  generatingProgressions.value = true
+  error.value = null
+  
+  const length = props.chords.length
+  
+  const response = await suggestProgression(props.progressionId, length)
+  console.log('suggestProgression response:', response)
+  
+  if ("error" in response) {
+    error.value = response.error
+    generatingProgressions.value = false
+    return
+  }
+  
+  if (response.suggestedProgressions) {
+    suggestedProgressions.value = response.suggestedProgressions
+  }
+  
+  generatingProgressions.value = false
+}
+
+const handlePlayProgression = async (progressionIndex) => {
+  const progression = suggestedProgressions.value[progressionIndex]
+  if (!progression || !props.playbackControls) return
+  
+  // If this progression is already playing, stop it
+  if (playingProgressionIndex.value === progressionIndex) {
+    playingProgressionIndex.value = null
+    
+    // Clear the timeout
+    if (progressionPlaybackTimeout) {
+      clearTimeout(progressionPlaybackTimeout)
+      progressionPlaybackTimeout = null
+    }
+    
+    // Stop the audio playback
+    if (props.playbackControls?.stopProgressionPlayback) {
+      props.playbackControls.stopProgressionPlayback()
+    }
+    
+    console.log('Progression playback stopped')
+    return
+  }
+  
+  // Stop any currently playing progression
+  if (progressionPlaybackTimeout) {
+    clearTimeout(progressionPlaybackTimeout)
+    progressionPlaybackTimeout = null
+  }
+  
+  playingProgressionIndex.value = progressionIndex
+  
+  // Use PlaybackControls to play the progression
+  await props.playbackControls.playProgressionSequence(progression)
+  
+  // Calculate total duration and set timeout to reset playing state
+  const secondsPerChord = props.playbackControls.preferences?.secondsPerChord || 1
+  const totalDuration = progression.length * secondsPerChord * 1000
+  progressionPlaybackTimeout = setTimeout(() => {
+    playingProgressionIndex.value = null
+    progressionPlaybackTimeout = null
+  }, totalDuration)
+}
+
+const handleUseProgression = async (progressionIndex) => {
+  const progression = suggestedProgressions.value[progressionIndex]
+  if (!progression) return
+  
+  // Use the parent's function if provided
+  if (props.onUseProgression) {
+    await props.onUseProgression(progression)
+  }
 }
 
 onMounted(async () => {
@@ -217,13 +303,59 @@ onMounted(async () => {
       </div>
     </div>
     
-    <!-- Generate Chord Button -->
-    <button class="generate-btn" @click="handleGenerateChord" :disabled="generating">
-      {{ generating ? 'Generating...' : 'Generate Chord' }}
-    </button>
+    <!-- Generate Buttons -->
+    <div class="button-container">
+      <button class="generate-btn" @click="handleGenerateChord" :disabled="generating">
+        {{ generating ? 'Generating...' : 'Generate Chord' }}
+      </button>
+      <button class="generate-btn" @click="handleGenerateProgression" :disabled="generatingProgressions">
+        {{ generatingProgressions ? 'Generating...' : 'Generate Progression' }}
+      </button>
+    </div>
     
+    <!-- Progression Suggestions -->
+    <div v-if="suggestedProgressions.length > 0" class="progression-suggestions">
+      <div 
+        v-for="(progression, pIndex) in suggestedProgressions" 
+        :key="pIndex" 
+        class="progression-row"
+      >
+        <div class="progression-chords">
+          <div 
+            v-for="(chord, cIndex) in progression" 
+            :key="cIndex" 
+            class="progression-chord-box"
+          >
+            {{ chord }}
+          </div>
+        </div>
+        <div class="progression-actions">
+          <button 
+            class="progression-action-btn play-btn" 
+            :class="{ 'playing': playingProgressionIndex === pIndex }"
+            @click="handlePlayProgression(pIndex)"
+            :title="playingProgressionIndex === pIndex ? 'Stop' : 'Play'"
+          >
+            <svg v-if="playingProgressionIndex !== pIndex" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+            </svg>
+          </button>
+          <button 
+            class="progression-action-btn use-btn" 
+            @click="handleUseProgression(pIndex)"
+            title="Use"
+          >
+            Use
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Suggestion Grid -->
-    <div class="suggestion-grid">
+    <div v-else class="suggestion-grid">
       <div 
         v-for="(chord, index) in NUM_SUGGESTIONS" 
         :key="index" 
@@ -311,9 +443,15 @@ onMounted(async () => {
   box-shadow: 0 0 0 3px rgba(66, 184, 131, 0.1);
 }
 
+.button-container {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
 .generate-btn {
   width: auto;
-  margin: 2rem auto 0;
   padding: 0.75rem 2rem;
   background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
   color: white;
@@ -324,7 +462,6 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: block;
 }
 
 .generate-btn:hover {
@@ -383,17 +520,138 @@ onMounted(async () => {
   box-shadow: 0 4px 8px rgba(66, 184, 131, 0.3);
 }
 
+/* Progression Suggestions */
+.progression-suggestions {
+  margin-top: 1.5rem;
+}
+
+.progression-header {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+  color: #35495e;
+  font-weight: 600;
+  text-align: center;
+}
+
+.progression-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.2s;
+}
+
+.progression-row:hover {
+  border-color: #42b883;
+  box-shadow: 0 2px 8px rgba(66, 184, 131, 0.2);
+}
+
+.progression-chords {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.progression-chord-box {
+  width: 80px;
+  height: 50px;
+  padding: 0.5rem;
+  background: #42b883;
+  color: white;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1rem;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.progression-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.progression-action-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.progression-action-btn.play-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #42b883;
+  background: white;
+  color: #42b883;
+  padding: 0;
+}
+
+.progression-action-btn.play-btn:hover:not(:disabled) {
+  background: #42b883;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(66, 184, 131, 0.3);
+}
+
+.progression-action-btn.play-btn.playing {
+  background: #42b883;
+  color: white;
+}
+
+.progression-action-btn.use-btn {
+  background: #42b883;
+  color: white;
+}
+
+.progression-action-btn.use-btn:hover {
+  background: #35495e;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 6px rgba(53, 73, 94, 0.3);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .suggestion-box {
     height: 60px;
     font-size: 1rem;
   }
+  
+  .progression-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .progression-actions {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 480px) {
   .suggestion-box {
     height: 50px;
+    font-size: 0.9rem;
+  }
+  
+  .progression-chord-box {
+    width: 60px;
+    height: 40px;
     font-size: 0.9rem;
   }
 }

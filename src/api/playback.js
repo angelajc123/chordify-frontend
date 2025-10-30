@@ -24,6 +24,10 @@ export function getProgressionNotes(progression) {
   return post('/PlayBack/getProgressionNotes', { progression })
 }
 
+export function deleteSettings(progressionId) {
+  return post('/PlayBack/deleteSettings', { progressionId })
+}
+
 export default {
   initializeSettings,
   setInstrument,

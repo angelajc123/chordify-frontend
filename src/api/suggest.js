@@ -28,6 +28,10 @@ export function suggestProgression(progressionId, length) {
   return post('/SuggestChord/suggestProgression', { progressionId, length })
 }
 
+export function deletePreferences(progressionId) {
+  return post('/SuggestChord/deletePreferences', { progressionId })
+}
+
 export default {
   initializePreferences,
   setGenre,

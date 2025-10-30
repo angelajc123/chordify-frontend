@@ -1,7 +1,6 @@
-# API Specification
-## PlayBack
+# API Specification: PlayBack Concept
 
-**Purpose:** Manages and retrieves playback settings for musical chord progressions, and provides musical information about chords.
+**Purpose:** Manage settings and retrieve musical notes for chord progressions, enabling playback functionality.
 
 ---
 
@@ -9,18 +8,20 @@
 
 ### POST /api/PlayBack/initializeSettings
 
-**Description:** Initializes default playback settings for a given progression ID.
+**Description:** Initializes playback settings for a given progression ID with default values.
 
 **Requirements:**
-- Playback settings for the `progressionId` must not already exist.
+- Playback settings for `progressionId` must not already exist.
 
 **Effects:**
-- A new `PlaybackSettings` entry is created with default instrument "Piano" and `secondsPerChord` of 1. The new settings are returned.
+- Creates new `PlaybackSettings` for `progressionId`.
+- Sets the `instrument` to "Piano" and `secondsPerChord` to 1.
+- Returns the created settings.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID"
+  "progressionId": "string"
 }
 ```
 
@@ -28,7 +29,7 @@
 ```json
 {
   "settings": {
-    "_id": "ID",
+    "_id": "string",
     "instrument": "string",
     "secondsPerChord": "number"
   }
@@ -46,19 +47,19 @@
 
 ### POST /api/PlayBack/setInstrument
 
-**Description:** Sets the instrument for playback of a specified progression.
+**Description:** Sets the instrument for a specific progression's playback.
 
 **Requirements:**
 - The `instrument` must be one of the predefined valid instruments (e.g., "Piano", "Guitar").
-- Playback settings for the `progressionId` must exist.
+- Playback settings for `progressionId` must exist.
 
 **Effects:**
-- The `instrument` for the `progressionId`'s playback settings is updated.
+- Updates the `instrument` for the `progressionId`'s playback settings.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "instrument": "string"
 }
 ```
@@ -79,19 +80,19 @@
 
 ### POST /api/PlayBack/setSecondsPerChord
 
-**Description:** Sets the duration, in seconds, for each chord in a specified progression.
+**Description:** Sets the duration for each chord in a progression's playback.
 
 **Requirements:**
 - `secondsPerChord` must be between `MIN_SECONDS_PER_CHORD` and `MAX_SECONDS_PER_CHORD`.
-- Playback settings for the `progressionId` must exist.
+- Playback settings for `progressionId` must exist.
 
 **Effects:**
-- The `secondsPerChord` for the `progressionId`'s playback settings is updated.
+- Updates the `secondsPerChord` for the `progressionId`'s playback settings.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "secondsPerChord": "number"
 }
 ```
@@ -112,18 +113,18 @@
 
 ### POST /api/PlayBack/getPlayBackSettings
 
-**Description:** Retrieves the current playback settings for a specific progression.
+**Description:** Retrieves the current playback settings for a given progression ID.
 
 **Requirements:**
-- Playback settings for the `progressionId` must exist.
+- Playback settings for `progressionId` must exist.
 
 **Effects:**
-- Returns the `PlaybackSettings` object for the given `progressionId`.
+- Returns the `PlaybackSettings` for the `progressionId`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID"
+  "progressionId": "string"
 }
 ```
 
@@ -131,7 +132,7 @@
 ```json
 {
   "settings": {
-    "_id": "ID",
+    "_id": "string",
     "instrument": "string",
     "secondsPerChord": "number"
   }
@@ -147,29 +148,58 @@
 
 ---
 
-### POST /api/PlayBack/getChordNotes
+### POST /api/PlayBack/deleteSettings
 
-**Description:** Retrieves the individual notes that comprise a given chord symbol.
+**Description:** Deletes the playback settings associated with a specific progression ID.
 
 **Requirements:**
-- The `chord` string must represent a valid chord (e.g., "Cmaj7", "Am").
+- Playback settings for `progressionId` must exist.
 
 **Effects:**
-- Returns an array of notes (e.g., "C", "E", "G") for the specified `chord`.
+- Removes the `PlaybackSettings` for the `progressionId`.
 
 **Request Body:**
 ```json
 {
-  "chord": "string"
+  "progressionId": "string"
+}
+```
+
+**Success Response Body (Action):**
+```json
+{}
+```
+
+**Error Response Body:**
+```json
+{
+  "error": "string"
+}
+```
+
+---
+
+### POST /api/PlayBack/getChordNotes
+
+**Description:** Retrieves the individual notes (with octave) that comprise a given chord.
+
+**Requirements:**
+- The `chord` must be a valid chord string or `null`. If `null`, an empty array of notes is returned. If not null, it must be a valid chord recognized by the system.
+
+**Effects:**
+- Returns an array of note strings (e.g., "C4", "E4", "G4") for the specified chord.
+
+**Request Body:**
+```json
+{
+  "chord": "string | null"
 }
 ```
 
 **Success Response Body (Action):**
 ```json
 {
-  "notes": [
-    "string"
-  ]
+  "notes": ["string"]
 }
 ```
 
@@ -184,20 +214,18 @@
 
 ### POST /api/PlayBack/getProgressionNotes
 
-**Description:** Retrieves the notes for each chord in a provided progression sequence.
+**Description:** Retrieves the individual notes (with octave) for each chord in a given progression.
 
 **Requirements:**
-- All chords in the `progression` array must be valid chord symbols.
+- The `progression` must be an array of valid chord strings or `null`. Each chord within the progression must be valid.
 
 **Effects:**
-- Returns a nested array where each inner array contains the notes for a corresponding chord in the `progression`.
+- Returns a 2D array where each inner array contains note strings for a corresponding chord in the progression.
 
 **Request Body:**
 ```json
 {
-  "progression": [
-    "string"
-  ]
+  "progression": ["string | null"]
 }
 ```
 
@@ -205,9 +233,7 @@
 ```json
 {
   "notes": [
-    [
-      "string"
-    ]
+    ["string"]
   ]
 }
 ```
@@ -223,7 +249,7 @@
 
 # API Specification: ProgressionBuilder Concept
 
-**Purpose:** Allows users to create, modify, and manage musical chord progressions.
+**Purpose:** Manage the creation, modification, and deletion of chord progressions, including their structure and individual chords.
 
 ---
 
@@ -231,14 +257,14 @@
 
 ### POST /api/ProgressionBuilder/createProgression
 
-**Description:** Creates a new empty chord progression with a given name.
+**Description:** Creates a new, empty chord progression with a given name.
 
 **Requirements:**
-- `name` should be a non-empty string.
+- None.
 
 **Effects:**
-- A new `Progression` object is created with a unique ID and an empty list of chords.
-- The newly created `Progression` is returned.
+- Creates a new `Progression` with a fresh ID, the given `name`, and an empty `chords` array.
+- Returns the created progression.
 
 **Request Body:**
 ```json
@@ -251,9 +277,13 @@
 ```json
 {
   "progression": {
-    "_id": "ID",
+    "_id": "string",
     "name": "string",
-    "chords": []
+    "chords": [
+      {
+        "chord": "string | null"
+      }
+    ]
   }
 }
 ```
@@ -269,18 +299,18 @@
 
 ### POST /api/ProgressionBuilder/addSlot
 
-**Description:** Adds an empty chord slot to the end of a specified progression.
+**Description:** Adds an empty chord slot to an existing progression.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
+- Progression with `progressionId` must exist.
 
 **Effects:**
-- A new slot with a `null` chord value is appended to the `chords` array of the progression.
+- Appends a new slot with `chord: null` to the `chords` array of the specified progression.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID"
+  "progressionId": "string"
 }
 ```
 
@@ -300,20 +330,20 @@
 
 ### POST /api/ProgressionBuilder/setChord
 
-**Description:** Sets a chord at a specific position within a progression.
+**Description:** Sets the chord for a specific slot within a progression.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
-- The `position` must be a valid zero-indexed number within the progression's chord slots (i.e., `0 <= position < chords.length`).
-- The `chord` string must represent a valid chord symbol (e.g., "Cmaj7", "Am").
+- Progression with `progressionId` must exist.
+- `position` must be a valid index within the progression's chords array.
+- `chord` must be a valid chord string.
 
 **Effects:**
-- The chord at the specified `position` in the `progressionId`'s `chords` array is updated to the new `chord` value.
+- Updates the `chord` at the specified `position` in the progression's `chords` array.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "position": "number",
   "chord": "string"
 }
@@ -335,19 +365,19 @@
 
 ### POST /api/ProgressionBuilder/deleteChord
 
-**Description:** Clears the chord at a specific position within a progression, setting it to null.
+**Description:** Clears the chord from a specific slot, setting it to `null`.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
-- The `position` must be a valid zero-indexed number within the progression's chord slots.
+- Progression with `progressionId` must exist.
+- `position` must be a valid index within the progression's chords array.
 
 **Effects:**
-- The chord at the specified `position` in the `progressionId`'s `chords` array is set to `null`.
+- Sets the `chord` at the specified `position` in the progression's `chords` array to `null`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "position": "number"
 }
 ```
@@ -368,19 +398,19 @@
 
 ### POST /api/ProgressionBuilder/deleteSlot
 
-**Description:** Removes a chord slot entirely from a progression at a specific position.
+**Description:** Removes a slot entirely from a progression at a given position.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
-- The `position` must be a valid zero-indexed number within the progression's chord slots.
+- Progression with `progressionId` must exist.
+- `position` must be a valid index within the progression's chords array.
 
 **Effects:**
-- The slot at the specified `position` is removed from the `chords` array of the progression, and subsequent slots are shifted.
+- Removes the slot at the specified `position` from the progression's `chords` array.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "position": "number"
 }
 ```
@@ -401,19 +431,19 @@
 
 ### POST /api/ProgressionBuilder/reorderSlots
 
-**Description:** Changes the position of a chord slot within a progression.
+**Description:** Changes the order of slots within a progression by moving a slot from one position to another.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
-- Both `oldPosition` and `newPosition` must be valid zero-indexed numbers within the progression's chord slots.
+- Progression with `progressionId` must exist.
+- `oldPosition` and `newPosition` must be valid indices within the progression's chords array.
 
 **Effects:**
-- The chord slot originally at `oldPosition` is moved to `newPosition`, and other slots are shifted accordingly to maintain sequence.
+- Reorders the `chords` array of the specified progression by moving the slot from `oldPosition` to `newPosition`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "oldPosition": "number",
   "newPosition": "number"
 }
@@ -438,15 +468,15 @@
 **Description:** Deletes an entire chord progression.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
+- Progression with `progressionId` must exist.
 
 **Effects:**
-- The `Progression` identified by `progressionId` is removed from the system.
+- Removes the `Progression` identified by `progressionId`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID"
+  "progressionId": "string"
 }
 ```
 
@@ -469,16 +499,15 @@
 **Description:** Renames an existing chord progression.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
-- `name` should be a non-empty string.
+- Progression with `progressionId` must exist.
 
 **Effects:**
-- The `name` of the `Progression` identified by `progressionId` is updated to the new `name`.
+- Updates the `name` of the `Progression` identified by `progressionId`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "name": "string"
 }
 ```
@@ -499,18 +528,18 @@
 
 ### POST /api/ProgressionBuilder/getProgression
 
-**Description:** Retrieves the full details of a specific chord progression, including its name and all chord slots.
+**Description:** Retrieves a specific chord progression by its ID.
 
 **Requirements:**
-- The `progressionId` must correspond to an existing progression.
+- Progression with `progressionId` must exist.
 
 **Effects:**
-- Returns the `Progression` object for the given `progressionId`.
+- Returns the `Progression` object for the `progressionId`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID"
+  "progressionId": "string"
 }
 ```
 
@@ -518,7 +547,7 @@
 ```json
 {
   "progression": {
-    "_id": "ID",
+    "_id": "string",
     "name": "string",
     "chords": [
       {
@@ -546,7 +575,7 @@
 - None.
 
 **Effects:**
-- Returns an object containing an array of progression identifiers, each with an `id` and `name`.
+- Returns an object containing an array of objects, each with the `id` and `name` of a progression.
 
 **Request Body:**
 ```json
@@ -558,7 +587,7 @@
 {
   "progressionIdentifiers": [
     {
-      "id": "ID",
+      "id": "string",
       "name": "string"
     }
   ]
@@ -576,7 +605,7 @@
 
 # API Specification: SuggestChord Concept
 
-**Purpose:** Provides AI-powered chord and progression suggestions based on user preferences.
+**Purpose:** Provide AI-powered suggestions for individual chords or full progressions based on musical preferences.
 
 ---
 
@@ -584,19 +613,20 @@
 
 ### POST /api/SuggestChord/initializePreferences
 
-**Description:** Initializes default chord suggestion preferences for a given progression ID.
+**Description:** Initializes chord suggestion preferences for a given progression ID with default values.
 
 **Requirements:**
-- Suggestion preferences for the `progressionId` must not already exist.
+- Preferences for `progressionId` must not already exist.
 
 **Effects:**
-- A new `SuggestionPreferences` entry is created with default genre "Pop", complexity "Simple", and key "C".
-- The newly created preferences are returned.
+- Creates new `SuggestionPreferences` for `progressionId`.
+- Sets default `genre` to "Pop", `complexity` to "Simple", and `key` to "C".
+- Returns the created preferences.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID"
+  "progressionId": "string"
 }
 ```
 
@@ -604,7 +634,7 @@
 ```json
 {
   "preferences": {
-    "_id": "ID",
+    "_id": "string",
     "genre": "string",
     "complexity": "string",
     "key": "string"
@@ -623,19 +653,19 @@
 
 ### POST /api/SuggestChord/setGenre
 
-**Description:** Sets the preferred genre for chord suggestions for a specified progression.
+**Description:** Sets the preferred musical genre for chord suggestions for a given progression.
 
 **Requirements:**
-- The `genre` must be one of the predefined valid genres (e.g., "Pop", "Jazz").
-- Suggestion preferences for the `progressionId` must exist.
+- The `genre` must be one of the predefined valid genres.
+- Preferences for `progressionId` must exist.
 
 **Effects:**
-- The `genre` for the `progressionId`'s suggestion preferences is updated.
+- Updates the `genre` for the `progressionId`'s suggestion preferences.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "genre": "string"
 }
 ```
@@ -656,19 +686,19 @@
 
 ### POST /api/SuggestChord/setComplexity
 
-**Description:** Sets the preferred complexity level for chord suggestions for a specified progression.
+**Description:** Sets the preferred complexity level for chord suggestions for a given progression.
 
 **Requirements:**
-- The `complexity` must be one of the predefined valid complexity levels (e.g., "Simple", "Intermediate", "Advanced").
-- Suggestion preferences for the `progressionId` must exist.
+- The `complexity` must be one of the predefined valid complexity levels.
+- Preferences for `progressionId` must exist.
 
 **Effects:**
-- The `complexity` for the `progressionId`'s suggestion preferences is updated.
+- Updates the `complexity` for the `progressionId`'s suggestion preferences.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "complexity": "string"
 }
 ```
@@ -689,19 +719,19 @@
 
 ### POST /api/SuggestChord/setKey
 
-**Description:** Sets the musical key for chord suggestions for a specified progression.
+**Description:** Sets the musical key for chord suggestions for a given progression.
 
 **Requirements:**
-- The `key` must be a valid major or minor musical key (e.g., "C", "Am", "Eb").
-- Suggestion preferences for the `progressionId` must exist.
+- The `key` must be a valid major or minor key.
+- Preferences for `progressionId` must exist.
 
 **Effects:**
-- The `key` for the `progressionId`'s suggestion preferences is updated.
+- Updates the `key` for the `progressionId`'s suggestion preferences.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "key": "string"
 }
 ```
@@ -722,18 +752,18 @@
 
 ### POST /api/SuggestChord/getSuggestionPreferences
 
-**Description:** Retrieves the current chord suggestion preferences for a specific progression.
+**Description:** Retrieves the current chord suggestion preferences for a given progression ID.
 
 **Requirements:**
-- Suggestion preferences for the `progressionId` must exist.
+- Preferences for `progressionId` must exist.
 
 **Effects:**
-- Returns the `SuggestionPreferences` object for the given `progressionId`.
+- Returns the `SuggestionPreferences` for the `progressionId`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID"
+  "progressionId": "string"
 }
 ```
 
@@ -741,7 +771,7 @@
 ```json
 {
   "preferences": {
-    "_id": "ID",
+    "_id": "string",
     "genre": "string",
     "complexity": "string",
     "key": "string"
@@ -758,21 +788,53 @@
 
 ---
 
-### POST /api/SuggestChord/suggestChord
+### POST /api/SuggestChord/deletePreferences
 
-**Description:** Requests AI-powered suggestions for a chord at a specific position within a given progression, considering current preferences.
+**Description:** Deletes the chord suggestion preferences associated with a specific progression ID.
 
 **Requirements:**
-- The `position` must be a valid zero-indexed number within the `chords` array.
-- Suggestion preferences for the `progressionId` must exist.
+- Preferences for `progressionId` must exist.
 
 **Effects:**
-- Returns an array of suggested chord symbols based on LLM analysis, filtered for validity and limited to a predefined number of suggestions.
+- Removes the `SuggestionPreferences` for the `progressionId`.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string"
+}
+```
+
+**Success Response Body (Action):**
+```json
+{}
+```
+
+**Error Response Body:**
+```json
+{
+  "error": "string"
+}
+```
+
+---
+
+### POST /api/SuggestChord/suggestChord
+
+**Description:** Generates a list of suggested chords for a specific position within a progression, based on current preferences.
+
+**Requirements:**
+- `position` must be a valid index within the `chords` array (0 to `chords.length - 1`).
+- Preferences for `progressionId` must exist.
+- The underlying LLM must successfully return valid chord suggestions.
+
+**Effects:**
+- Returns an array of suggested chord strings.
+
+**Request Body:**
+```json
+{
+  "progressionId": "string",
   "chords": [
     "string | null"
   ],
@@ -800,19 +862,20 @@
 
 ### POST /api/SuggestChord/suggestProgression
 
-**Description:** Requests AI-powered suggestions for an entire chord progression of a specified length, considering current preferences.
+**Description:** Generates multiple complete chord progressions of a specified length, based on current preferences.
 
 **Requirements:**
-- The `length` must be a positive number greater than 0.
-- Suggestion preferences for the `progressionId` must exist.
+- `length` must be greater than 0.
+- Preferences for `progressionId` must exist.
+- The underlying LLM must successfully return valid chord progressions.
 
 **Effects:**
-- Returns an array of chord symbols forming a suggested progression of the specified `length`, based on LLM analysis.
+- Returns a 2D array of suggested chord progressions.
 
 **Request Body:**
 ```json
 {
-  "progressionId": "ID",
+  "progressionId": "string",
   "length": "number"
 }
 ```
@@ -820,8 +883,10 @@
 **Success Response Body (Action):**
 ```json
 {
-  "chordSequence": [
-    "string"
+  "suggestedProgressions": [
+    [
+      "string"
+    ]
   ]
 }
 ```

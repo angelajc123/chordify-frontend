@@ -1,12 +1,25 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { getProgression, addSlot, deleteSlot, reorderSlots, setChord } from '../api/progression.js'
 import ChordSuggestion from './ChordSuggestion.vue'
 import PlaybackControls from './PlaybackControls.vue'
+import ProgressionSidebar from './ProgressionSidebar.vue'
 import { isValidChord } from '../shared/constants.js'
 
-const PROGRESSION_ID = '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
+const router = useRouter()
+
 const MAX_BAR_CELLS = 8
+
+const props = defineProps({
+  initialProgressionId: {
+    type: String,
+    default: '019a08bc-6d5f-702e-bd63-ff7fb3bb0d21'
+  }
+})
+
+const currentProgressionId = ref(props.initialProgressionId)
+const isSidebarCollapsed = ref(false)
 
 const progression = ref({
     id: '',
@@ -107,7 +120,7 @@ const saveChordEdit = async (index) => {
     }
     
     clearEditingState()
-    await loadProgression(PROGRESSION_ID)
+    await loadProgression(currentProgressionId.value)
 }
 
 const cancelChordEdit = () => {
@@ -130,7 +143,7 @@ const handleAddSlot = async () => {
         return
     }
     
-    await loadProgression(PROGRESSION_ID)
+    await loadProgression(currentProgressionId.value)
 }
 
 const handleKeyDown = async (event) => {
@@ -150,7 +163,7 @@ const handleKeyDown = async (event) => {
         }
         
         selectedSlot.value = null
-        await loadProgression(PROGRESSION_ID)
+        await loadProgression(currentProgressionId.value)
     }
 }
 
@@ -205,7 +218,7 @@ const handleDrop = async (event, newIndex) => {
         return
     }
     
-    await loadProgression(PROGRESSION_ID)
+    await loadProgression(currentProgressionId.value)
     
     // Update selection to follow the moved slot
     updateSelectionAfterReorder(oldIndex, newIndex, wasSelected)
@@ -236,9 +249,55 @@ const clearDragState = () => {
     dragOverIndex.value = null
 }
 
+//----------- Progression Management -----------
+const handleUseProgression = async (progressionChords) => {
+    if (!progressionChords) return
+    
+    // Set each chord in the progression to the corresponding slot
+    for (let i = 0; i < progressionChords.length && i < progression.value.chords.length; i++) {
+        const response = await setChord(progression.value.id, i, progressionChords[i])
+        if ("error" in response) {
+            error.value = response.error
+            return
+        }
+    }
+    
+    // Clear remaining slots if progression is shorter than slot count
+    for (let i = progressionChords.length; i < progression.value.chords.length; i++) {
+        const response = await setChord(progression.value.id, i, '')
+        if ("error" in response) {
+            error.value = response.error
+            return
+        }
+    }
+    
+    // Reload the progression
+    await loadProgression(currentProgressionId.value)
+}
+
+//----------- Progression Switching -----------
+const handleProgressionSelected = (progressionId) => {
+    router.push({ name: 'progression', params: { id: progressionId } })
+}
+
+const handleSidebarCollapsed = (collapsed) => {
+    isSidebarCollapsed.value = collapsed
+}
+
+// Watch for changes to the route params
+watch(() => props.initialProgressionId, async (newId) => {
+    if (newId && newId !== currentProgressionId.value) {
+        currentProgressionId.value = newId
+        loading.value = true
+        selectedSlot.value = null
+        clearEditingState()
+        await loadProgression(newId)
+    }
+})
+
 // --------- Lifecycle Hooks ---------
 onMounted(async () => {
-    await loadProgression(PROGRESSION_ID)
+    await loadProgression(currentProgressionId.value)
     window.addEventListener('keydown', handleKeyDown)
 })
 
@@ -248,15 +307,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="progression-builder">
+  <div class="progression-builder" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
+    <ProgressionSidebar 
+      @progressionSelected="handleProgressionSelected"
+      @collapsed="handleSidebarCollapsed"
+    />
+    
     <header class="header">
       <h1>Chordify</h1>
     </header>
     
     <main class="content">
-      <div v-if="loading" class="loading">
-        Loading...
-      </div>
+      <div v-if="loading" class="loading"></div>
       
       <div v-else-if="error" class="error">
         {{ error }}
@@ -324,7 +386,8 @@ onUnmounted(() => {
           :selectedSlot="selectedSlot"
           :chords="progression.chords"
           :playbackControls="playbackControlsRef"
-          @chordUpdated="loadProgression(PROGRESSION_ID)"
+          :onUseProgression="handleUseProgression"
+          @chordUpdated="loadProgression(currentProgressionId)"
         />
       </div>
     </main>
@@ -336,6 +399,12 @@ onUnmounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  margin-left: 280px;
+  transition: margin-left 0.3s ease;
+}
+
+.progression-builder.sidebar-collapsed {
+  margin-left: 0;
 }
 
 .header {
@@ -517,5 +586,17 @@ onUnmounted(() => {
   font-weight: bold;
   text-align: center;
   padding: 0 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .progression-builder {
+    margin-left: 240px;
+  }
+}
+
+@media (max-width: 480px) {
+  .progression-builder {
+    margin-left: 0;
+  }
 }
 </style>
