@@ -1,5 +1,12 @@
+# Visual Design Study
+## Color Study
+![Visual Design](assets/visual-design-color.svg)
+## Font Study
+![Visual Design](assets/visual-design-font.svg)
+
 # User Journey
 
 The user opens the to the progression builder page. The user clicks on the plus button in the progression builder bar to add some empty chord slots. The user intends to make a four chord progression, so they create 4 empty slots. The user would like for the progression to start with Amin, but does not know where to go from there. The user selects the second empty chord slot and adjusts the suggestion preferences to their liking. They would like the key to be in Amin, the genre to be Jazz, and the complexity to be Intermediate. The user generates chord suggestions and selects the first suggestion. The user tries different chords and finally settles on a chords. The user would like to reorder one of the chords to go last, and also finds that they would prefer a three chord progression, so they deleter one of the chords. Satisfied with their progression, the user takes the chord progression to their piano and begins writing a song.
 
+# Screen Recording
 <video src="https://github.com/user-attachments/assets/81243d3c-a178-4e94-839d-9fd2f74fb515" width="640" controls></video>
