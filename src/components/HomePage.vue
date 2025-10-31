@@ -154,6 +154,9 @@ const handleKeyPress = (event) => {
   text-align: center;
   padding: 3rem;
   max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .title {
@@ -253,28 +256,12 @@ const handleKeyPress = (event) => {
   overflow: hidden;
 }
 
-.create-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.create-btn:hover:not(:disabled)::before {
-  width: 300px;
-  height: 300px;
-}
 
 .create-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(255, 0, 110, 0.8), 0 0 50px rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, #8b5cf6 0%, #00d9ff 100%);
   border-color: #00d9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(0, 217, 255, 0.7);
 }
 
 .create-btn:active:not(:disabled) {

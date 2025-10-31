@@ -174,6 +174,12 @@ const handleGenerateProgression = async () => {
   
   const length = props.chords.length
   
+  if (length === 0) {
+    emit('error', 'Please add chord slots before generating a progression')
+    generatingProgressions.value = false
+    return
+  }
+  
   const response = await suggestProgression(props.progressionId, length)
   console.log('suggestProgression response:', response)
   
@@ -439,7 +445,7 @@ onMounted(async () => {
 }
 
 .preference-select {
-  padding: 0.75rem;
+  padding: 0.75rem 2rem 0.75rem 0.75rem;
   border: 2px solid #8b5cf6;
   border-radius: 6px;
   font-family: 'Rajdhani', sans-serif;
@@ -450,6 +456,12 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300d9ff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 .preference-select:hover {

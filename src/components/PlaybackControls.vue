@@ -430,33 +430,35 @@ onMounted(async () => {
         </svg>
       </button>
 
-      <div class="control-group">
-        <label for="instrument" class="control-label">Instrument:</label>
-        <select 
-          id="instrument"
-          v-model="preferences.instrument"
-          @change="handleInstrumentChange"
-          class="instrument-select"
-        >
-          <option v-for="instrument in instruments" :key="instrument.value" :value="instrument.value">
-            {{ instrument.label }}
-          </option>
-        </select>
-      </div>
+      <div class="settings-group">
+        <div class="control-group">
+          <label for="instrument" class="control-label">Instrument:</label>
+          <select 
+            id="instrument"
+            v-model="preferences.instrument"
+            @change="handleInstrumentChange"
+            class="instrument-select"
+          >
+            <option v-for="instrument in instruments" :key="instrument.value" :value="instrument.value">
+              {{ instrument.label }}
+            </option>
+          </select>
+        </div>
 
-      <div class="control-group">
-        <label for="seconds" class="control-label">Seconds/Chord:</label>
-        <div class="seconds-control">
-          <button class="seconds-btn" @click="decrementSeconds" title="Decrease">−</button>
-          <input 
-            id="seconds"
-            type="text" 
-            v-model="inputValue"
-            @input="handleSecondsChange"
-            @blur="handleSecondsBlur"
-            class="seconds-input"
-          />
-          <button class="seconds-btn" @click="incrementSeconds" title="Increase">+</button>
+        <div class="control-group">
+          <label for="seconds" class="control-label">Seconds/Chord:</label>
+          <div class="seconds-control">
+            <button class="seconds-btn" @click="decrementSeconds" title="Decrease">−</button>
+            <input 
+              id="seconds"
+              type="text" 
+              v-model="inputValue"
+              @input="handleSecondsChange"
+              @blur="handleSecondsBlur"
+              class="seconds-input"
+            />
+            <button class="seconds-btn" @click="incrementSeconds" title="Increase">+</button>
+          </div>
         </div>
       </div>
     </div>
@@ -535,6 +537,14 @@ onMounted(async () => {
 }
 
 
+.settings-group {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  flex: 1;
+  justify-content: space-evenly;
+}
+
 .control-group {
   display: flex;
   align-items: center;
@@ -553,7 +563,7 @@ onMounted(async () => {
 }
 
 .instrument-select {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 2rem 0.5rem 1rem;
   border: 2px solid #8b5cf6;
   border-radius: 6px;
   background: rgba(15, 21, 53, 0.8);
@@ -565,6 +575,12 @@ onMounted(async () => {
   transition: all 0.3s;
   min-width: 120px;
   box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300d9ff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 .instrument-select:hover {

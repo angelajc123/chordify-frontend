@@ -1009,7 +1009,7 @@ onUnmounted(() => {
 .modal-actions {
   display: flex;
   gap: 1rem;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .confirm-btn {

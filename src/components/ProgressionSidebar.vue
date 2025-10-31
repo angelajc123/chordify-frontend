@@ -432,11 +432,13 @@ onMounted(async () => {
 }
 
 .toggle-btn:hover {
-  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
-  border-color: #ff006e;
+  border-color: #00d9ff;
   color: white;
-  transform: scale(1.05);
-  box-shadow: 0 0 30px rgba(255, 0, 110, 0.7);
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
+}
+
+.sidebar-container.sidebar-open .toggle-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
 }
 
 .sidebar-header {
@@ -464,18 +466,17 @@ onMounted(async () => {
 }
 
 .home-icon-btn:hover {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  background: rgba(139, 92, 246, 0.2);
   border-color: #00d9ff;
   color: white;
-  transform: scale(1.05);
-  box-shadow: 0 0 25px rgba(0, 217, 255, 0.6);
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
 }
 
 .home-icon-btn.selected {
-  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, rgba(255, 0, 110, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
   border-color: #ff006e;
   color: white;
-  box-shadow: 0 0 25px rgba(255, 0, 110, 0.6);
+  box-shadow: 0 0 20px rgba(255, 0, 110, 0.5);
 }
 
 .sidebar-content {
@@ -520,14 +521,15 @@ onMounted(async () => {
 .sidebar-title {
   margin: 0 0 1.5rem 0;
   font-family: 'Orbitron', sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   color: #00d9ff;
   font-weight: 700;
   border-bottom: 2px solid #8b5cf6;
   padding-bottom: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-shadow: 0 0 15px rgba(0, 217, 255, 0.6);
+  text-align: center;
 }
 
 .loading,
@@ -765,7 +767,7 @@ onMounted(async () => {
 .modal-actions {
   display: flex;
   gap: 1rem;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .cancel-btn,
