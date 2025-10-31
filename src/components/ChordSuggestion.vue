@@ -377,9 +377,11 @@ onMounted(async () => {
   max-width: 1000px;
   margin: 2rem auto 0;
   padding: 1.5rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(15, 21, 53, 0.8) 0%, rgba(10, 14, 39, 0.8) 100%);
+  border-radius: 12px;
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.4), 0 0 60px rgba(255, 0, 110, 0.2);
+  backdrop-filter: blur(20px);
 }
 
 .loading,
@@ -387,22 +389,31 @@ onMounted(async () => {
   text-align: center;
   padding: 1rem;
   font-size: 1rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .loading {
-  color: #42b883;
+  color: #00d9ff;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
 }
 
 .error {
-  color: #e74c3c;
+  color: #ff006e;
+  text-shadow: 0 0 10px rgba(255, 0, 110, 0.5);
 }
 
 .preferences-header {
   margin: 0 0 1.5rem 0;
+  font-family: 'Orbitron', sans-serif;
   font-size: 1.5rem;
-  color: #35495e;
-  font-weight: 600;
+  color: #00d9ff;
+  font-weight: 700;
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 15px rgba(0, 217, 255, 0.6);
 }
 
 .preferences-container {
@@ -418,30 +429,38 @@ onMounted(async () => {
 }
 
 .preference-item label {
+  font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
-  color: #35495e;
+  color: #00d9ff;
   font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
 }
 
 .preference-select {
   padding: 0.75rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #8b5cf6;
   border-radius: 6px;
+  font-family: 'Rajdhani', sans-serif;
   font-size: 1rem;
-  background: white;
-  color: #35495e;
+  font-weight: 500;
+  background: rgba(15, 21, 53, 0.8);
+  color: #e0e7ff;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
 }
 
 .preference-select:hover {
-  border-color: #42b883;
+  border-color: #00d9ff;
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
 }
 
 .preference-select:focus {
   outline: none;
-  border-color: #42b883;
-  box-shadow: 0 0 0 3px rgba(66, 184, 131, 0.1);
+  border-color: #ff006e;
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.5);
 }
 
 .button-container {
@@ -454,20 +473,25 @@ onMounted(async () => {
 .generate-btn {
   width: auto;
   padding: 0.75rem 2rem;
-  background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
+  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
   color: white;
-  border: none;
+  border: 2px solid rgba(255, 0, 110, 0.5);
   border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  box-shadow: 0 0 20px rgba(255, 0, 110, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .generate-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #00d9ff 100%);
+  border-color: #00d9ff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
+  box-shadow: 0 0 30px rgba(0, 217, 255, 0.7);
 }
 
 .generate-btn:active {
@@ -491,34 +515,41 @@ onMounted(async () => {
   width: 100%;
   min-width: 60px;
   height: 80px;
-  background: #fafafa;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
+  background: rgba(15, 21, 53, 0.6);
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: 'Share Tech Mono', monospace;
   font-weight: bold;
-  color: #35495e;
-  transition: all 0.2s;
+  color: #94a3b8;
+  transition: all 0.3s;
   font-size: 1.2rem;
   user-select: none;
+  backdrop-filter: blur(10px);
 }
 
 .suggestion-box:hover {
-  background: #f5f5f5;
-  border-color: #42b883;
+  background: rgba(139, 92, 246, 0.2);
+  border-color: #8b5cf6;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
 }
 
 .suggestion-box-clickable {
   cursor: pointer;
-  background: #42b883;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border-color: #8b5cf6;
   color: white;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 .suggestion-box-clickable:hover {
-  background: #35495e;
+  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
+  border-color: #ff006e;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(66, 184, 131, 0.3);
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.6), 0 0 40px rgba(139, 92, 246, 0.4);
 }
 
 /* Progression Suggestions */
@@ -540,15 +571,17 @@ onMounted(async () => {
   gap: 1rem;
   margin-bottom: 1rem;
   padding: 1rem;
-  background: #fafafa;
+  background: rgba(15, 21, 53, 0.6);
   border-radius: 8px;
-  border: 2px solid #e0e0e0;
-  transition: all 0.2s;
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
 }
 
 .progression-row:hover {
-  border-color: #42b883;
-  box-shadow: 0 2px 8px rgba(66, 184, 131, 0.2);
+  border-color: #00d9ff;
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+  background: rgba(139, 92, 246, 0.1);
 }
 
 .progression-chords {
@@ -562,16 +595,20 @@ onMounted(async () => {
   width: 80px;
   height: 50px;
   padding: 0.5rem;
-  background: #42b883;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border: 2px solid rgba(139, 92, 246, 0.5);
   color: white;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: 'Share Tech Mono', monospace;
   font-weight: bold;
   font-size: 1rem;
   user-select: none;
   flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
 .progression-actions {
@@ -598,33 +635,44 @@ onMounted(async () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 2px solid #42b883;
-  background: white;
-  color: #42b883;
+  border: 2px solid #8b5cf6;
+  background: rgba(15, 21, 53, 0.6);
+  color: #00d9ff;
   padding: 0;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
 }
 
 .progression-action-btn.play-btn:hover:not(:disabled) {
-  background: #42b883;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border-color: #00d9ff;
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(66, 184, 131, 0.3);
+  box-shadow: 0 0 25px rgba(0, 217, 255, 0.6);
 }
 
 .progression-action-btn.play-btn.playing {
-  background: #42b883;
+  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
+  border-color: #ff006e;
   color: white;
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.6);
 }
 
 .progression-action-btn.use-btn {
-  background: #42b883;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border: 2px solid #8b5cf6;
   color: white;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
 }
 
 .progression-action-btn.use-btn:hover {
-  background: #35495e;
+  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
+  border-color: #ff006e;
   transform: translateY(-2px);
-  box-shadow: 0 2px 6px rgba(53, 73, 94, 0.3);
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.6);
 }
 
 /* Responsive adjustments */

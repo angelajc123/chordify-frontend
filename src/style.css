@@ -1,11 +1,26 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Cyberpunk Color Palette */
+  --cyber-bg-dark: #0a0e27;
+  --cyber-bg-darker: #050816;
+  --cyber-bg-card: #0f1535;
+  --cyber-pink: #ff006e;
+  --cyber-pink-bright: #ff2e97;
+  --cyber-purple: #8b5cf6;
+  --cyber-purple-dark: #6d28d9;
+  --cyber-blue: #00d9ff;
+  --cyber-blue-bright: #3df7ff;
+  --cyber-cyan: #00fff5;
+  --cyber-text: #e0e7ff;
+  --cyber-text-dim: #94a3b8;
+  --cyber-border: #1e293b;
+  
+  font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: dark;
+  color: var(--cyber-text);
+  background-color: var(--cyber-bg-dark);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,17 +40,12 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: linear-gradient(135deg, var(--cyber-bg-darker) 0%, var(--cyber-bg-dark) 50%, #1a1f3a 100%);
+  background-attachment: fixed;
 }
 
 #app {
   width: 100%;
   margin: 0 auto;
   text-align: center;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
 }

@@ -106,7 +106,33 @@ const handleKeyPress = (event) => {
 .home-page {
   min-height: 100vh;
   display: flex;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #050816 0%, #0a0e27 50%, #1a1f3a 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.home-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 217, 255, 0.03) 2px,
+      rgba(0, 217, 255, 0.03) 4px
+    );
+  pointer-events: none;
+  animation: scanlines 8s linear infinite;
+}
+
+@keyframes scanlines {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(10px); }
 }
 
 .home-content {
@@ -116,6 +142,8 @@ const handleKeyPress = (event) => {
   align-items: center;
   justify-content: center;
   transition: margin-left 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .home-content.sidebar-collapsed {
@@ -129,21 +157,39 @@ const handleKeyPress = (event) => {
 }
 
 .title {
+  font-family: 'Orbitron', sans-serif;
   font-size: 6rem;
-  font-weight: bold;
-  background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
+  font-weight: 900;
+  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 50%, #00d9ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin-bottom: 1rem;
-  animation: fadeInUp 0.8s ease-out;
+  animation: fadeInUp 0.8s ease-out, glow 2s ease-in-out infinite alternate;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  filter: drop-shadow(0 0 20px rgba(255, 0, 110, 0.5));
+}
+
+@keyframes glow {
+  from {
+    filter: drop-shadow(0 0 20px rgba(255, 0, 110, 0.5));
+  }
+  to {
+    filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.8));
+  }
 }
 
 .subtitle {
+  font-family: 'Rajdhani', sans-serif;
   font-size: 1.8rem;
-  color: #35495e;
+  font-weight: 500;
+  color: #00d9ff;
   margin-bottom: 3rem;
   animation: fadeInUp 0.8s ease-out 0.2s both;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
 }
 
 .create-progression {
@@ -162,47 +208,73 @@ const handleKeyPress = (event) => {
   flex: 1;
   padding: 1rem 1.5rem;
   font-size: 1.1rem;
-  border: 2px solid #e0e0e0;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 500;
+  border: 2px solid #8b5cf6;
   border-radius: 12px;
-  background: white;
-  color: #35495e;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: rgba(15, 21, 53, 0.8);
+  color: #e0e7ff;
+  transition: all 0.3s;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3), inset 0 0 10px rgba(139, 92, 246, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .progression-input:focus {
   outline: none;
-  border-color: #42b883;
-  box-shadow: 0 4px 16px rgba(66, 184, 131, 0.2);
+  border-color: #ff006e;
+  box-shadow: 0 0 30px rgba(255, 0, 110, 0.6), inset 0 0 15px rgba(255, 0, 110, 0.2);
+  background: rgba(15, 21, 53, 0.95);
 }
 
 .progression-input:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .progression-input::placeholder {
-  color: #95a5a6;
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 .create-btn {
   width: 60px;
   height: 60px;
-  border: none;
+  border: 2px solid #ff006e;
   border-radius: 12px;
-  background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
+  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  box-shadow: 0 0 20px rgba(255, 0, 110, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.create-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.create-btn:hover:not(:disabled)::before {
+  width: 300px;
+  height: 300px;
 }
 
 .create-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(66, 184, 131, 0.3);
+  box-shadow: 0 0 30px rgba(255, 0, 110, 0.8), 0 0 50px rgba(139, 92, 246, 0.5);
+  border-color: #00d9ff;
 }
 
 .create-btn:active:not(:disabled) {
@@ -215,16 +287,20 @@ const handleKeyPress = (event) => {
 }
 
 .error-message {
-  color: #e74c3c;
+  color: #ff006e;
   font-size: 0.95rem;
   margin-bottom: 0.5rem;
   text-align: center;
+  text-shadow: 0 0 10px rgba(255, 0, 110, 0.5);
+  font-weight: 600;
 }
 
 .helper-text {
   font-size: 1rem;
-  color: #95a5a6;
+  color: #94a3b8;
   text-align: center;
+  font-weight: 400;
+  letter-spacing: 0.05em;
 }
 
 @keyframes fadeInUp {

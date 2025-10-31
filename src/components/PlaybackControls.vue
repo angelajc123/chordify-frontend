@@ -468,9 +468,11 @@ onMounted(async () => {
   max-width: 1000px;
   margin: 0 auto 2rem auto;
   padding: 1.5rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(15, 21, 53, 0.8) 0%, rgba(10, 14, 39, 0.8) 100%);
+  border-radius: 12px;
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.4), 0 0 60px rgba(255, 0, 110, 0.2);
+  backdrop-filter: blur(20px);
 }
 
 .loading,
@@ -478,14 +480,19 @@ onMounted(async () => {
   text-align: center;
   padding: 1rem;
   font-size: 1rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .loading {
-  color: #42b883;
+  color: #00d9ff;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
 }
 
 .error {
-  color: #e74c3c;
+  color: #ff006e;
+  text-shadow: 0 0 10px rgba(255, 0, 110, 0.5);
 }
 
 .controls-container {
@@ -499,28 +506,32 @@ onMounted(async () => {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 2px solid #42b883;
-  background: white;
-  color: #42b883;
+  border: 2px solid #8b5cf6;
+  background: rgba(15, 21, 53, 0.6);
+  color: #00d9ff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+  backdrop-filter: blur(10px);
 }
 
 .control-btn:hover {
-  background: #42b883;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border-color: #00d9ff;
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(66, 184, 131, 0.3);
+  box-shadow: 0 0 25px rgba(0, 217, 255, 0.6);
 }
 
 .control-btn.playing,
 .control-btn.active {
-  background: #42b883;
+  background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);
+  border-color: #ff006e;
   color: white;
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.6);
 }
 
 
@@ -531,32 +542,40 @@ onMounted(async () => {
 }
 
 .control-label {
+  font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
-  color: #35495e;
+  color: #00d9ff;
   font-size: 0.95rem;
   white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
 }
 
 .instrument-select {
   padding: 0.5rem 1rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #8b5cf6;
   border-radius: 6px;
-  background: white;
-  color: #35495e;
+  background: rgba(15, 21, 53, 0.8);
+  color: #e0e7ff;
+  font-family: 'Rajdhani', sans-serif;
   font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
   min-width: 120px;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
 }
 
 .instrument-select:hover {
-  border-color: #42b883;
+  border-color: #00d9ff;
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
 }
 
 .instrument-select:focus {
   outline: none;
-  border-color: #42b883;
-  box-shadow: 0 0 0 3px rgba(66, 184, 131, 0.1);
+  border-color: #ff006e;
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.5);
 }
 
 .seconds-control {
@@ -569,44 +588,50 @@ onMounted(async () => {
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  border: 2px solid #42b883;
-  background: white;
-  color: #42b883;
+  border: 2px solid #8b5cf6;
+  background: rgba(15, 21, 53, 0.6);
+  color: #00d9ff;
   font-size: 1.2rem;
   font-weight: bold;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
 }
 
 .seconds-btn:hover {
-  background: #42b883;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border-color: #00d9ff;
   color: white;
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
 }
 
 .seconds-input {
   width: 70px;
   padding: 0.5rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #8b5cf6;
   border-radius: 6px;
   text-align: center;
+  font-family: 'Share Tech Mono', monospace;
   font-size: 1rem;
-  color: #35495e;
+  color: #e0e7ff;
   font-weight: 600;
-  background: #ffffff;
-  transition: all 0.2s;
+  background: rgba(15, 21, 53, 0.8);
+  transition: all 0.3s;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
 }
 
 .seconds-input:hover {
-  border-color: #42b883;
+  border-color: #00d9ff;
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
 }
 
 .seconds-input:focus {
   outline: none;
-  border-color: #42b883;
-  box-shadow: 0 0 0 3px rgba(66, 184, 131, 0.1);
+  border-color: #ff006e;
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.5);
 }
 
 /* Remove spinner arrows for number input in some browsers */
