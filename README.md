@@ -14,5 +14,5 @@ Angela is an aspiring musician who loves to make music. She has some experience 
   Your browser does not support the video tag.
 </video>
 
-Link to demo: [Demo](https://youtu.be/jUgM6BfV6vg)
+If that doesn't work, here is a link to the video: [Demo](https://youtu.be/jUgM6BfV6vg)
 
