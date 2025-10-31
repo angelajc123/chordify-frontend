@@ -84,7 +84,6 @@ const synths = {
 
 const isPlaying = ref(false)
 const isLooping = ref(false)
-const isMuted = ref(false)
 const error = ref(null)
 const loading = ref(true)
 const inputValue = ref('')
@@ -210,11 +209,6 @@ watch(() => props.selectedSlot, (newSlot, oldSlot) => {
 const toggleLoop = () => {
   isLooping.value = !isLooping.value
   console.log('Loop toggled:', isLooping.value)
-}
-
-const toggleMute = () => {
-  isMuted.value = !isMuted.value
-  console.log('Mute toggled:', isMuted.value)
 }
 
 const handleInstrumentChange = async (event) => {
@@ -433,24 +427,6 @@ onMounted(async () => {
           <path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
           <path d="M7 22l-4-4 4-4"/>
           <path d="M21 13v1a4 4 0 0 1-4 4H3"/>
-        </svg>
-      </button>
-
-      <button 
-        class="control-btn mute-btn" 
-        :class="{ 'active': isMuted }"
-        @click="toggleMute"
-        :title="isMuted ? 'Unmute' : 'Mute'"
-      >
-        <svg v-if="!isMuted" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-        </svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <line x1="23" y1="9" x2="17" y2="15"/>
-          <line x1="17" y1="9" x2="23" y2="15"/>
         </svg>
       </button>
 

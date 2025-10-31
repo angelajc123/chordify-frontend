@@ -4,7 +4,7 @@ import { getSuggestionPreferences, setKey, setGenre, setComplexity, suggestChord
 import { setChord } from '../api/progression.js'
 import { GENRES, COMPLEXITY_LEVELS, NUM_SUGGESTIONS, NUM_PROGESSION_SUGGESTIONS } from '../shared/constants.js'
 
-const emit = defineEmits(['chordUpdated'])
+const emit = defineEmits(['chordUpdated', 'error'])
 
 const props = defineProps({
   progressionId: {
@@ -113,6 +113,7 @@ const handleComplexityChange = async (event) => {
 
 const handleGenerateChord = async () => {
   if (props.selectedSlot === null) {
+    emit('error', 'Please select a chord slot first')
     return
   }
   
@@ -129,7 +130,7 @@ const handleGenerateChord = async () => {
   console.log('suggestChord response:', response)
   
   if ("error" in response) {
-    error.value = response.error
+    emit('error', response.error)
     generating.value = false
     return
   }
@@ -177,7 +178,7 @@ const handleGenerateProgression = async () => {
   console.log('suggestProgression response:', response)
   
   if ("error" in response) {
-    error.value = response.error
+    emit('error', response.error)
     generatingProgressions.value = false
     return
   }

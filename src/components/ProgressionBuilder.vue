@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getProgression, addSlot, deleteSlot, reorderSlots, setChord } from '../api/progression.js'
+import { getProgression, addSlot, deleteSlot, reorderSlots, setChord, deleteChord, renameProgression } from '../api/progression.js'
 import ChordSuggestion from './ChordSuggestion.vue'
 import PlaybackControls from './PlaybackControls.vue'
 import ProgressionSidebar from './ProgressionSidebar.vue'
@@ -29,8 +29,11 @@ const progression = ref({
 
 // UI state
 const error = ref(null)
+const showErrorModal = ref(false)
+const errorMessage = ref('')
 const loading = ref(true)
 const selectedSlot = ref(null)
+const addButtonSelected = ref(false)
 
 // Drag and drop state
 const draggedIndex = ref(null)
@@ -40,9 +43,13 @@ const dragOverIndex = ref(null)
 const editingSlot = ref(null)
 const editingValue = ref('')
 const originalValue = ref('')
+const editingProgressionName = ref(false)
+const progressionNameValue = ref('')
+const renaming = ref(false)
 
 // Component refs
 const playbackControlsRef = ref(null)
+const sidebarRef = ref(null)
 
 //----------- Data Loading -----------
 const loadProgression = async (progressionId) => {
@@ -70,7 +77,14 @@ const handleSlotClick = async (index) => {
         return
     }
     
+    addButtonSelected.value = false
     selectedSlot.value = selectedSlot.value === index ? null : index
+}
+
+const handleAddButtonClick = async () => {
+    addButtonSelected.value = false
+    selectedSlot.value = null
+    await handleAddSlot()
 }
 
 const handleSlotDoubleClick = async (index) => {
@@ -105,6 +119,7 @@ const saveChordEdit = async (index) => {
     const newChord = editingValue.value.trim()
     if (!isValidChord(newChord)) {
       console.log('Invalid chord:', newChord)
+      showError(`"${newChord}" is not a valid chord. Please enter a valid chord name.`)
       cancelChordEdit()
       return
     }
@@ -114,7 +129,7 @@ const saveChordEdit = async (index) => {
     const response = await setChord(progression.value.id, index, newChord)
     
     if ("error" in response) {
-        error.value = response.error
+        showError(response.error)
         clearEditingState()
         return
     }
@@ -133,8 +148,68 @@ const clearEditingState = () => {
     originalValue.value = ''
 }
 
+//----------- Progression Name Editing -----------
+const startEditingProgressionName = async () => {
+    editingProgressionName.value = true
+    progressionNameValue.value = progression.value.name
+    
+    await nextTick()
+    const input = document.querySelector('.progression-title-input')
+    if (input) {
+        input.focus()
+        input.select()
+    }
+}
+
+const cancelProgressionNameEdit = () => {
+    editingProgressionName.value = false
+    progressionNameValue.value = ''
+}
+
+const saveProgressionName = async () => {
+    if (!progressionNameValue.value.trim()) {
+        cancelProgressionNameEdit()
+        return
+    }
+    
+    renaming.value = true
+    error.value = null
+    
+    try {
+        const response = await renameProgression(progression.value.id, progressionNameValue.value.trim())
+        
+        if ("error" in response) {
+            error.value = response.error
+            return
+        }
+        
+        progression.value.name = progressionNameValue.value.trim()
+        
+        // Update sidebar
+        if (sidebarRef.value) {
+            sidebarRef.value.updateProgressionName(progression.value.id, progressionNameValue.value.trim())
+        }
+    } catch (err) {
+        error.value = 'Failed to rename progression'
+    } finally {
+        renaming.value = false
+        cancelProgressionNameEdit()
+    }
+}
+
+const handleProgressionNameKeyDown = async (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault()
+        event.target.blur() // Trigger blur to save
+    } else if (event.key === 'Escape') {
+        event.preventDefault()
+        cancelProgressionNameEdit()
+    }
+}
+
 //----------- Slot Management (Add/Delete) -----------
 const handleAddSlot = async () => {
+    const oldLength = progression.value.chords.length
     const response = await addSlot(progression.value.id)
     console.log('Add slot response:', response)
     
@@ -144,26 +219,93 @@ const handleAddSlot = async () => {
     }
     
     await loadProgression(currentProgressionId.value)
+    
+    // Select the newly added slot
+    addButtonSelected.value = false
+    selectedSlot.value = oldLength
 }
 
 const handleKeyDown = async (event) => {
-    // Don't handle shortcuts while editing
-    if (editingSlot.value !== null) {
+    // Don't handle shortcuts while editing chord or progression name
+    if (editingSlot.value !== null || editingProgressionName.value) {
         return
     }
     
-    // Delete selected slot with Backspace
-    if (event.key === 'Backspace' && selectedSlot.value !== null) {
-        const response = await deleteSlot(progression.value.id, selectedSlot.value)
-        console.log('Delete slot response:', response)
-        
-        if ("error" in response) {
-            error.value = response.error
+    // Handle arrow key and tab navigation
+    if (addButtonSelected.value) {
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            addButtonSelected.value = false
+            selectedSlot.value = progression.value.chords.length - 1
+            return
+        } else if (event.key === 'Enter') {
+            event.preventDefault()
+            await handleAddSlot()
             return
         }
+    } else if (selectedSlot.value !== null) {
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            if (selectedSlot.value > 0) {
+                selectedSlot.value--
+            }
+            return
+        } else if (event.key === 'ArrowRight' || event.key === 'Tab') {
+            event.preventDefault()
+            if (selectedSlot.value < progression.value.chords.length - 1) {
+                selectedSlot.value++
+            } else if (progression.value.chords.length < MAX_BAR_CELLS) {
+                // Move to add button if at last slot and add button exists
+                selectedSlot.value = null
+                addButtonSelected.value = true
+            }
+            return
+        }
+    }
+    
+    // Handle Delete/Backspace for selected slot
+    if ((event.key === 'Backspace' || event.key === 'Delete') && selectedSlot.value !== null) {
+        const currentChord = progression.value.chords[selectedSlot.value]
+        const deletedIndex = selectedSlot.value
         
-        selectedSlot.value = null
-        await loadProgression(currentProgressionId.value)
+        // If slot has a chord, delete the chord (set to empty)
+        if (currentChord && currentChord.chord) {
+            const response = await deleteChord(progression.value.id, selectedSlot.value)
+            console.log('Delete chord response:', response)
+            
+            if ("error" in response) {
+                error.value = response.error
+                return
+            }
+            
+            await loadProgression(currentProgressionId.value)
+            // Keep the same slot selected (now empty)
+            selectedSlot.value = deletedIndex
+        } 
+        // If slot is empty, delete the slot
+        else {
+            const response = await deleteSlot(progression.value.id, selectedSlot.value)
+            console.log('Delete slot response:', response)
+            
+            if ("error" in response) {
+                error.value = response.error
+                return
+            }
+            
+            await loadProgression(currentProgressionId.value)
+            
+            // Select the slot that moved into this position, or the add button if at the end
+            if (deletedIndex < progression.value.chords.length) {
+                selectedSlot.value = deletedIndex
+            } else if (progression.value.chords.length < MAX_BAR_CELLS) {
+                // Select add button if it exists
+                selectedSlot.value = null
+                addButtonSelected.value = true
+            } else {
+                // Select the last slot if no add button
+                selectedSlot.value = progression.value.chords.length - 1
+            }
+        }
     }
 }
 
@@ -284,6 +426,38 @@ const handleSidebarCollapsed = (collapsed) => {
     isSidebarCollapsed.value = collapsed
 }
 
+const handleProgressionRenamed = (progressionId, newName) => {
+    // Update the progression name if it's the current one
+    if (progression.value.id === progressionId) {
+        progression.value.name = newName
+    }
+}
+
+const goToHome = () => {
+    router.push({ name: 'home' })
+}
+
+const handleClickOutside = (event) => {
+    // Only deselect add button if it's selected
+    if (!addButtonSelected.value) return
+    
+    // Check if click is outside the progression bar
+    const progressionBar = document.querySelector('.progression-bar')
+    if (progressionBar && !progressionBar.contains(event.target)) {
+        addButtonSelected.value = false
+    }
+}
+
+const showError = (message) => {
+    errorMessage.value = message
+    showErrorModal.value = true
+}
+
+const closeErrorModal = () => {
+    showErrorModal.value = false
+    errorMessage.value = ''
+}
+
 // Watch for changes to the route params
 watch(() => props.initialProgressionId, async (newId) => {
     if (newId && newId !== currentProgressionId.value) {
@@ -299,22 +473,26 @@ watch(() => props.initialProgressionId, async (newId) => {
 onMounted(async () => {
     await loadProgression(currentProgressionId.value)
     window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
     window.removeEventListener('keydown', handleKeyDown)
+    window.removeEventListener('click', handleClickOutside)
 })
 </script>
 
 <template>
   <div class="progression-builder" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
     <ProgressionSidebar 
+      ref="sidebarRef"
       @progressionSelected="handleProgressionSelected"
       @collapsed="handleSidebarCollapsed"
+      @progressionRenamed="handleProgressionRenamed"
     />
     
     <header class="header">
-      <h1>Chordify</h1>
+      <h1 @click="goToHome" class="clickable-title">Chordify</h1>
     </header>
     
     <main class="content">
@@ -325,7 +503,22 @@ onUnmounted(() => {
       </div>
       
       <div v-else class="progression-info">
-        <h2>{{ progression.name }}</h2>
+        <div class="progression-title-container">
+          <input
+            v-if="editingProgressionName"
+            v-model="progressionNameValue"
+            class="progression-title-input"
+            @keydown="handleProgressionNameKeyDown"
+            @blur="saveProgressionName"
+            :disabled="renaming"
+            autofocus
+          />
+          <h2 
+            v-else
+            @dblclick="startEditingProgressionName"
+            class="progression-title"
+          >{{ progression.name }}</h2>
+        </div>
         
         <PlaybackControls ref="playbackControlsRef" :progressionId="progression.id" :chords="progression.chords" :selectedSlot="selectedSlot"/>
         
@@ -374,10 +567,10 @@ onUnmounted(() => {
                 <span v-else>{{ chord.chord || 'Empty' }}</span>
               </div>
             </div>
-            <div class="bar-cell">
-              <button class="add-chord-btn" @click="handleAddSlot">+</button>
+            <div v-if="progression.chords.length < MAX_BAR_CELLS" class="bar-cell">
+              <button class="add-chord-btn" :class="{ 'add-btn-selected': addButtonSelected }" @click="handleAddButtonClick">+</button>
             </div>
-            <div v-for="n in (MAX_BAR_CELLS - 1 - progression.chords.length)" :key="`empty-${n}`" class="bar-cell"></div>
+            <div v-for="n in (MAX_BAR_CELLS - progression.chords.length - (progression.chords.length < MAX_BAR_CELLS ? 1 : 0))" :key="`empty-${n}`" class="bar-cell"></div>
           </div>
         </div>
         
@@ -388,9 +581,21 @@ onUnmounted(() => {
           :playbackControls="playbackControlsRef"
           :onUseProgression="handleUseProgression"
           @chordUpdated="loadProgression(currentProgressionId)"
+          @error="showError"
         />
       </div>
     </main>
+    
+    <!-- Error Modal -->
+    <div v-if="showErrorModal" class="modal-overlay" @click="closeErrorModal">
+      <div class="modal-content error-modal" @click.stop>
+        <h3>Error</h3>
+        <p>{{ errorMessage }}</p>
+        <div class="modal-actions">
+          <button class="confirm-btn" @click="closeErrorModal">OK</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -419,6 +624,17 @@ onUnmounted(() => {
   margin: 0;
   font-size: 2.5rem;
   font-weight: bold;
+  color: white;
+}
+
+.clickable-title {
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.clickable-title:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
 }
 
 .content {
@@ -449,10 +665,38 @@ onUnmounted(() => {
   padding: 2rem;
 }
 
-.progression-info h2 {
+.progression-title-container {
+  margin-bottom: 2rem;
+}
+
+.progression-title {
   font-size: 2rem;
   color: #35495e;
-  margin: 0 0 2rem 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.progression-title-input {
+  font-size: 2rem;
+  color: #35495e;
+  font-weight: bold;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  text-align: center;
+  outline: none;
+  background: transparent;
+  min-width: 300px;
+  line-height: 1.2;
+  font-family: inherit;
+}
+
+.progression-title-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .progression-bar {
@@ -529,6 +773,11 @@ onUnmounted(() => {
   box-shadow: 0 4px 8px rgba(66, 184, 131, 0.3);
 }
 
+.add-btn-selected {
+  border: 3px solid #35495e;
+  box-shadow: 0 0 0 2px rgba(53, 73, 94, 0.2);
+}
+
 .slot {
   width: calc(100%);
   height: 80px;
@@ -586,6 +835,89 @@ onUnmounted(() => {
   font-weight: bold;
   text-align: center;
   padding: 0 0.5rem;
+}
+
+/* Error Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.2s ease-out;
+}
+
+.modal-content h3 {
+  margin: 0 0 1rem 0;
+  color: #35495e;
+  font-size: 1.5rem;
+}
+
+.modal-content p {
+  margin: 0 0 1.5rem 0;
+  color: #7f8c8d;
+  line-height: 1.5;
+}
+
+.error-modal h3 {
+  color: #e74c3c;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.confirm-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #42b883;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: #35495e;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 768px) {

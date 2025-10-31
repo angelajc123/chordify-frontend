@@ -1,13 +1,13 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { listProgressions, deleteProgression, createProgression } from '../api/progression.js'
+import { listProgressions, deleteProgression, createProgression, renameProgression } from '../api/progression.js'
 import { deleteSettings, initializeSettings } from '../api/playback.js'
 import { deletePreferences, initializePreferences } from '../api/suggest.js'
 
 const router = useRouter()
 const route = useRoute()
-const emit = defineEmits(['progressionSelected', 'collapsed'])
+const emit = defineEmits(['progressionSelected', 'collapsed', 'progressionRenamed'])
 
 const isCollapsed = ref(false)
 const progressions = ref([])
@@ -20,6 +20,9 @@ const deleting = ref(false)
 const showCreateModal = ref(false)
 const newProgressionName = ref('')
 const creating = ref(false)
+const editingProgressionId = ref(null)
+const editingProgressionName = ref('')
+const renaming = ref(false)
 
 const loadProgressions = async () => {
   loading.value = true
@@ -162,6 +165,66 @@ const handleCreateKeyPress = (event) => {
   }
 }
 
+const startRenaming = async (progression, event) => {
+  event.stopPropagation()
+  editingProgressionId.value = progression.id
+  editingProgressionName.value = progression.name
+  
+  await nextTick()
+  const input = document.querySelector('.progression-name-input')
+  if (input) {
+    input.focus()
+    input.select()
+  }
+}
+
+const cancelRenaming = () => {
+  editingProgressionId.value = null
+  editingProgressionName.value = ''
+}
+
+const handleRename = async (progressionId) => {
+  if (!editingProgressionName.value.trim()) {
+    cancelRenaming()
+    return
+  }
+  
+  renaming.value = true
+  error.value = null
+  
+  try {
+    const response = await renameProgression(progressionId, editingProgressionName.value.trim())
+    
+    if ("error" in response) {
+      error.value = response.error
+      return
+    }
+    
+    // Update local list
+    const progression = progressions.value.find(p => p.id === progressionId)
+    if (progression) {
+      progression.name = editingProgressionName.value.trim()
+      // Emit event to notify other components
+      emit('progressionRenamed', progressionId, editingProgressionName.value.trim())
+    }
+  } catch (err) {
+    error.value = 'Failed to rename progression'
+  } finally {
+    renaming.value = false
+    cancelRenaming()
+  }
+}
+
+const handleRenameKeyPress = (event, progressionId) => {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    event.target.blur() // Trigger blur to save
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelRenaming()
+  }
+}
+
 const isOnHomePage = computed(() => {
   return route.name === 'home'
 })
@@ -177,6 +240,19 @@ watch(() => route.params.id, (newId) => {
   } else if (route.name === 'home') {
     selectedProgressionId.value = null
   }
+})
+
+// Method to update progression name from external source
+const updateProgressionName = (progressionId, newName) => {
+  const progression = progressions.value.find(p => p.id === progressionId)
+  if (progression) {
+    progression.name = newName
+  }
+}
+
+// Expose method for parent components
+defineExpose({
+  updateProgressionName
 })
 
 onMounted(async () => {
@@ -231,10 +307,25 @@ onMounted(async () => {
           v-for="progression in progressions"
           :key="progression.id"
           class="progression-item"
-          :class="{ 'selected': selectedProgressionId === progression.id }"
+          :class="{ 'selected': selectedProgressionId === progression.id, 'editing': editingProgressionId === progression.id }"
           @click="selectProgression(progression.id)"
         >
-          <span class="progression-name">{{ progression.name }}</span>
+          <input
+            v-if="editingProgressionId === progression.id"
+            v-model="editingProgressionName"
+            class="progression-name-input"
+            @click.stop
+            @dblclick.stop
+            @keydown="handleRenameKeyPress($event, progression.id)"
+            @blur="handleRename(progression.id)"
+            :disabled="renaming"
+            autofocus
+          />
+          <span 
+            v-else
+            class="progression-name"
+            @dblclick="startRenaming(progression, $event)"
+          >{{ progression.name }}</span>
           <button 
             class="delete-btn"
             @click="confirmDelete(progression, $event)"
@@ -318,8 +409,8 @@ onMounted(async () => {
   position: fixed;
   left: 20px;
   top: 20px;
-  width: 50px;
-  height: 50px;
+  width: 45px;
+  height: 45px;
   background: white;
   border: 2px solid #42b883;
   border-radius: 8px;
@@ -393,7 +484,7 @@ onMounted(async () => {
   justify-content: space-between;
   padding: 0.875rem 1.25rem;
   margin-bottom: 1.5rem;
-  background: #42b883;
+  background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
   border: none;
   border-radius: 8px;
   color: white;
@@ -483,6 +574,27 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: left;
+  cursor: text;
+}
+
+.progression-name-input {
+  flex: 1;
+  font-weight: 500;
+  font-size: 0.95rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.progression-item.editing {
+  cursor: text;
+}
+
+.progression-item.selected .progression-name-input {
+  color: white;
 }
 
 .delete-btn {
