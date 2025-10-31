@@ -149,15 +149,19 @@ const clearEditingState = () => {
 }
 
 //----------- Progression Name Editing -----------
-const startEditingProgressionName = async () => {
+const startEditingProgressionName = async (event) => {
     editingProgressionName.value = true
     progressionNameValue.value = progression.value.name
     
     await nextTick()
-    const input = document.querySelector('.progression-title-input')
-    if (input) {
-        input.focus()
-        input.select()
+    const titleElement = event.target
+    if (titleElement) {
+        // Select all text
+        const range = document.createRange()
+        range.selectNodeContents(titleElement)
+        const selection = window.getSelection()
+        selection.removeAllRanges()
+        selection.addRange(range)
     }
 }
 
@@ -166,9 +170,22 @@ const cancelProgressionNameEdit = () => {
     progressionNameValue.value = ''
 }
 
-const saveProgressionName = async () => {
-    if (!progressionNameValue.value.trim()) {
-        cancelProgressionNameEdit()
+const handleProgressionNameInput = (event) => {
+    progressionNameValue.value = event.target.textContent
+}
+
+const saveProgressionName = async (event) => {
+    const newName = event.target.textContent.trim()
+    
+    if (!newName) {
+        // Restore original name if empty
+        event.target.textContent = progression.value.name
+        editingProgressionName.value = false
+        return
+    }
+    
+    if (newName === progression.value.name) {
+        editingProgressionName.value = false
         return
     }
     
@@ -176,24 +193,27 @@ const saveProgressionName = async () => {
     error.value = null
     
     try {
-        const response = await renameProgression(progression.value.id, progressionNameValue.value.trim())
+        const response = await renameProgression(progression.value.id, newName)
         
         if ("error" in response) {
             error.value = response.error
+            // Restore original name on error
+            event.target.textContent = progression.value.name
             return
         }
         
-        progression.value.name = progressionNameValue.value.trim()
+        progression.value.name = newName
         
         // Update sidebar
         if (sidebarRef.value) {
-            sidebarRef.value.updateProgressionName(progression.value.id, progressionNameValue.value.trim())
+            sidebarRef.value.updateProgressionName(progression.value.id, newName)
         }
     } catch (err) {
         error.value = 'Failed to rename progression'
+        event.target.textContent = progression.value.name
     } finally {
         renaming.value = false
-        cancelProgressionNameEdit()
+        editingProgressionName.value = false
     }
 }
 
@@ -203,7 +223,10 @@ const handleProgressionNameKeyDown = async (event) => {
         event.target.blur() // Trigger blur to save
     } else if (event.key === 'Escape') {
         event.preventDefault()
-        cancelProgressionNameEdit()
+        // Restore original name
+        event.target.textContent = progression.value.name
+        editingProgressionName.value = false
+        event.target.blur()
     }
 }
 
@@ -504,19 +527,14 @@ onUnmounted(() => {
       
       <div v-else class="progression-info">
         <div class="progression-title-container">
-          <input
-            v-if="editingProgressionName"
-            v-model="progressionNameValue"
-            class="progression-title-input"
-            @keydown="handleProgressionNameKeyDown"
-            @blur="saveProgressionName"
-            :disabled="renaming"
-            autofocus
-          />
           <h2 
-            v-else
             @dblclick="startEditingProgressionName"
+            @blur="saveProgressionName"
+            @input="handleProgressionNameInput"
+            @keydown="handleProgressionNameKeyDown"
+            :contenteditable="editingProgressionName"
             class="progression-title"
+            :class="{ 'editing': editingProgressionName }"
           >{{ progression.name }}</h2>
         </div>
         
@@ -720,9 +738,24 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-.progression-title:hover {
+.progression-title:hover:not(.editing) {
   color: #ff006e;
   text-shadow: 0 0 20px rgba(255, 0, 110, 0.8);
+}
+
+.progression-title.editing {
+  outline: none;
+  color: #00d9ff;
+  text-shadow: 0 0 15px rgba(0, 217, 255, 0.6);
+  border: 2px solid #ff006e;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(255, 0, 110, 0.5);
+}
+
+.progression-title.editing:focus {
+  outline: none;
+  border-color: #ff006e;
+  box-shadow: 0 0 25px rgba(255, 0, 110, 0.6);
 }
 
 .progression-title-input {
@@ -766,23 +799,6 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 50%, #00d9ff 100%);
-  position: relative;
-}
-
-.bar-numbers::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  animation: shimmer 3s infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { transform: translateX(-100%); }
-  50% { transform: translateX(100%); }
 }
 
 .bar-number {
@@ -794,8 +810,6 @@ onUnmounted(() => {
   font-size: 1rem;
   border-right: 2px solid rgba(255, 255, 255, 0.3);
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-  position: relative;
-  z-index: 1;
 }
 
 .bar-number:last-child {
@@ -878,25 +892,6 @@ onUnmounted(() => {
   transition: all 0.3s;
   user-select: none;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-  position: relative;
-  overflow: hidden;
-}
-
-.slot::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transform: rotate(45deg);
-  animation: slotShine 3s infinite;
-}
-
-@keyframes slotShine {
-  0% { transform: translateX(-100%) rotate(45deg); }
-  100% { transform: translateX(100%) rotate(45deg); }
 }
 
 .slot:hover {
@@ -914,9 +909,6 @@ onUnmounted(() => {
   box-shadow: 0 0 10px rgba(139, 92, 246, 0.2);
 }
 
-.slot-empty::before {
-  display: none;
-}
 
 .slot-selected {
   background: linear-gradient(135deg, #ff006e 0%, #8b5cf6 100%);

@@ -74,6 +74,7 @@ const loadPreferences = async () => {
 
 const handleKeyChange = async (event) => {
   const newKey = event.target.value
+  event.target.blur() // Unselect the dropdown
   const response = await setKey(props.progressionId, newKey)
   
   if ("error" in response) {
@@ -87,6 +88,7 @@ const handleKeyChange = async (event) => {
 
 const handleGenreChange = async (event) => {
   const newGenre = event.target.value
+  event.target.blur() // Unselect the dropdown
   const response = await setGenre(props.progressionId, newGenre)
   
   if ("error" in response) {
@@ -100,6 +102,7 @@ const handleGenreChange = async (event) => {
 
 const handleComplexityChange = async (event) => {
   const newComplexity = event.target.value
+  event.target.blur() // Unselect the dropdown
   const response = await setComplexity(props.progressionId, newComplexity)
   
   if ("error" in response) {

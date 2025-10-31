@@ -213,6 +213,7 @@ const toggleLoop = () => {
 
 const handleInstrumentChange = async (event) => {
   const newInstrument = event.target.value
+  event.target.blur() // Unselect the dropdown
   preferences.value.instrument = newInstrument
   console.log('Instrument changed:', newInstrument)
   
@@ -246,6 +247,17 @@ const handleSecondsChange = async (event) => {
     }
   } else {
     inputValue.value = preferences.value.secondsPerChord.toString()
+  }
+}
+
+const handleSecondsKeyDown = async (event) => {
+  // Stop propagation to prevent global keyboard shortcuts from firing
+  event.stopPropagation()
+  
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    await handleSecondsChange(event)
+    event.target.blur() // Remove focus from input
   }
 }
 
@@ -454,6 +466,7 @@ onMounted(async () => {
               type="text" 
               v-model="inputValue"
               @input="handleSecondsChange"
+              @keydown="handleSecondsKeyDown"
               @blur="handleSecondsBlur"
               class="seconds-input"
             />
