@@ -1,9 +1,5 @@
 import { post } from './client.js'
 
-export function initializePreferences(progressionId) {
-  return post('/SuggestChord/initializePreferences', { progressionId })
-}
-
 export function setGenre(progressionId, genre) {
   return post('/SuggestChord/setGenre', { progressionId, genre })
 }
@@ -33,7 +29,6 @@ export function deletePreferences(progressionId) {
 }
 
 export default {
-  initializePreferences,
   setGenre,
   setComplexity,
   setKey,

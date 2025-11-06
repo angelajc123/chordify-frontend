@@ -3,8 +3,6 @@ import { ref } from 'vue'
 import ProgressionSidebar from './ProgressionSidebar.vue'
 import { useRouter } from 'vue-router'
 import { createProgression } from '../api/progression.js'
-import { initializeSettings } from '../api/playback.js'
-import { initializePreferences } from '../api/suggest.js'
 
 const router = useRouter()
 const isSidebarCollapsed = ref(false)
@@ -39,12 +37,6 @@ const handleCreateProgression = async () => {
     }
     
     const progressionId = createResponse.progression._id
-    
-    // Initialize playback settings
-    await initializeSettings(progressionId)
-    
-    // Initialize suggestion preferences
-    await initializePreferences(progressionId)
     
     // Navigate to the new progression
     router.push({ name: 'progression', params: { id: progressionId } })

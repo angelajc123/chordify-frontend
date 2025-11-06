@@ -2,8 +2,8 @@
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { listProgressions, deleteProgression, createProgression, renameProgression } from '../api/progression.js'
-import { deleteSettings, initializeSettings } from '../api/playback.js'
-import { deletePreferences, initializePreferences } from '../api/suggest.js'
+import { deleteSettings } from '../api/playback.js'
+import { deletePreferences } from '../api/suggest.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -136,12 +136,6 @@ const handleCreateProgression = async () => {
     }
     
     const progressionId = createResponse.progression._id
-    
-    // Initialize playback settings
-    await initializeSettings(progressionId)
-    
-    // Initialize suggestion preferences
-    await initializePreferences(progressionId)
     
     // Reload progressions list
     await loadProgressions()
